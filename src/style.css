@@ -55,6 +55,24 @@ button:disabled{cursor:default}
 .tool.on .ico{color:#2a2214}
 .tool[hidden]{display:none}
 
+/* Alt menü (Hizmet, Üretim) */
+#flyout{position:absolute;left:calc(74px + var(--sl));top:60px;background:var(--bg);border-radius:var(--r);padding:4px;display:flex;flex-direction:column;gap:2px;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);z-index:4;max-height:calc(100% - 60px);overflow-y:auto}
+#flyout button{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 8px;border-radius:10px;min-width:160px;color:var(--ink)}
+#flyout button.on{background:var(--accent);color:#2a2214}
+#flyout span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+#flyout b{font-size:13px;font-weight:600} #flyout small{font-size:11px;color:var(--ink2)}
+#flyout button.on small{color:#4a3c22}
+.tool.t-svc .ico{color:#9fc3e8} .tool.t-ind .ico{color:#d9a27a}
+#projb .ico{color:var(--accent)}
+#projb.alert{box-shadow:inset 0 0 0 2px var(--accent)}
+.bar{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:8px;margin:6px 0;font-size:12.5px}
+.bar i{height:8px;border-radius:4px;background:rgba(255,255,255,.1);position:relative;overflow:hidden}
+.bar i::after{content:"";position:absolute;inset:0;width:calc(var(--f)*100%);background:var(--accent);border-radius:4px}
+.bar b{font-variant-numeric:tabular-nums;font-weight:600}
+.row small{font-weight:500;font-size:11px;margin-left:4px}
+button.wide.primary{background:var(--accent);color:#2a2214}
+
 /* İpucu */
 #hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);max-width:min(560px,calc(100% - 180px));background:var(--bg);border-radius:12px;
   padding:8px 14px;font-size:13px;line-height:1.35;text-align:center;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -140,3 +158,5 @@ button.wide.on{background:var(--accent);color:#2a2214}
 }
 @media (max-height:360px){ .tool span{display:none} .tool{min-height:34px} #date{min-width:90px;font-size:13px} }
 @media (max-width:720px) and (orientation:landscape){ #demand em{display:none} #demand span{width:14px} .stat{padding:6px 8px} }
+@media (max-width:900px) and (orientation:landscape){ #demand em{font-size:7.5px} #demand span{width:24px} #date{min-width:94px} .hud-c{gap:4px} }
+#flyout:not([hidden]) ~ #hint{display:none}

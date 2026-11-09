@@ -5,7 +5,7 @@
   "description": "Telefonda yatay ekranda oynanan, 1850'den başlayan şehir kurma oyunu",
   "scripts": {
     "build": "python3 tools/build.py",
-    "test": "node --check src/engine.js && CI_CHECK=1 node tests/sim.js 10",
+    "test": "node --check src/engine.js && node tests/features.js && CI_CHECK=1 node tests/sim.js 10",
     "test:browser": "python3 tools/build.py && python3 tests/smoke.py",
     "serve": "python3 -m http.server 8080 -d web"
   }

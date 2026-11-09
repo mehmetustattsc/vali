@@ -24,6 +24,18 @@ const ICON = {
   people: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11a3 3 0 1 0 0-6M17 14c2.5.4 4 2.8 4 6"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>',
   layers: '<path d="M12 3 2 8l10 5 10-5zM2 13l10 5 10-5"/>',
+  svc: '<path d="M3 21h18M4 10h16M12 3 3 8h18zM6 10v8M10 10v8M14 10v8M18 10v8"/>',
+  ind: '<path d="M3 21V11l5 3V11l5 3V11l5 3V5h3v16zM7 17h2M12 17h2M17 17h2"/>',
+  police: '<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  school: '<path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"/>',
+  clinic: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+  square: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M9 16h6M10 8h4"/><circle cx="6.5" cy="6.5" r="1"/><circle cx="17.5" cy="6.5" r="1"/><circle cx="6.5" cy="17.5" r="1"/><circle cx="17.5" cy="17.5" r="1"/>',
+  lumber: '<path d="M14 4l6 6-3 1-4-4zM13.5 7.5 4 17l3 3 9.5-9.5M3 21h8"/>',
+  quarry: '<path d="M3 20h18l-3-7-4 3-3-6-5 10zM15 4l4 4M14 9l5-5"/>',
+  coal: '<path d="M4 14h16l-2 5H6zM7 14l2-5h6l2 5M8 21a1 1 0 1 0 0-.01M16 21a1 1 0 1 0 0-.01"/>',
+  iron: '<path d="M4 10h12c0 2.5 2 4 4 4v2H4zM8 16v4h8v-4M4 10V7h9"/>',
+  site: '<path d="M4 21V4h11M4 7h14l-3 4M15 4v7M18 7v8M16 15h4v4h-4zM2 21h20"/>',
+  scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
 };
 const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
 
@@ -35,11 +47,25 @@ const TOOL_INFO = {
   farm: { name: 'Tarla', tip: 'Tarla alanı: şehri besler, fazlası satılır.' },
   com: { name: 'Ticaret', tip: 'Dükkân ve atölyeler: işçilere iş, şehre ticaret vergisi.' },
   fountain: { name: 'Çeşme', tip: 'Çevresine su verir. Su olmadan evler büyümez.' },
+  square: { name: 'Meydan', tip: '2×2 meydan: çevresindeki halkı mutlu eder, konaklar için gerekir.' },
+  police: { name: 'Karakol', tip: 'Asayiş: 150 kişiden sonra halk güvenlik ister.' },
+  school: { name: 'Mektep', tip: 'Eğitim: 200 kişiden sonra aileler mektep ister.' },
+  clinic: { name: 'Hekimhane', tip: 'Sağlık: 250 kişiden sonra hastalık riski büyür.' },
+  lumber: { name: 'Oduncu', tip: 'Ormanın yanına kur (çevrede en az 3 kare orman). Kereste üretir.' },
+  quarry: { name: 'Taş ocağı', tip: 'Dağın dibine kur. Taş üretir.' },
+  coal: { name: 'Kömür ocağı', tip: 'Kara kayaların (kömür yatağı) yanına kur.' },
+  iron: { name: 'Demir madeni', tip: 'Pas renkli kayaların (demir yatağı) yanına kur.' },
+  site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
+  svc: { name: 'Hizmet' }, ind: { name: 'Üretim' },
 };
+const GROUPS = { svc: ['fountain', 'square', 'police', 'school', 'clinic'], ind: ['lumber', 'quarry', 'coal', 'iron'] };
+const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
+const COVER = { fountain: 'water', res: 'water', square: 'square', police: 'police', school: 'school', clinic: 'clinic' };
 const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han'] };
 const ZONE_NAME = { 1: 'Konut alanı', 2: 'Tarla alanı', 3: 'Ticaret alanı' };
-const SPEEDS = [0, 1, 2, 4];
+const SPEEDS = [0, 1, 2, 5];
+const DAY_MS = 1500;   // 1x: bir gün 1,5 saniye, bir ay 45 saniye; en hızlıda bir yıl yaklaşık 1,8 dakika
 
 let G = null, view = null, tool = 'pan', speed = 1, lastSpeed = 1, acc = 0, selected = -1, panelKind = null;
 
@@ -75,10 +101,18 @@ function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ?
 
 /* ---------- arayüz iskeleti ---------- */
 function buildChrome() {
-  $('#tools').innerHTML = ['pan', 'gov', 'road', 'res', 'farm', 'com', 'fountain', 'bulldoze'].map(k =>
+  $('#tools').innerHTML = ['pan', 'gov', 'road', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze'].map(k =>
     `<button class="tool t-${k}" data-tool="${k}" aria-label="${TOOL_INFO[k].name}">${ico(k)}<span>${TOOL_INFO[k].name}</span></button>`).join('');
-  $('#tools').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) setTool(b.dataset.tool === tool && tool !== 'pan' ? 'pan' : b.dataset.tool); });
-  $('#speeds').innerHTML = SPEEDS.map((s, k) => `<button data-s="${k}" aria-label="${s ? s + ' kat hız' : 'Duraklat'}">${s ? '<i></i>'.repeat(s === 4 ? 3 : s) : ico('pause')}</button>`).join('');
+  $('#tools').addEventListener('click', e => {
+    const b = e.target.closest('[data-tool]'); if (!b) return;
+    const k = b.dataset.tool;
+    if (GROUPS[k]) { openFlyout(k, b); return; }
+    closeFlyout(); setTool(k === tool && tool !== 'pan' ? 'pan' : k);
+  });
+  $('#flyout').addEventListener('click', e => { const b = e.target.closest('[data-tool]'); if (b) { closeFlyout(); setTool(b.dataset.tool); } });
+  $('#speeds').innerHTML = SPEEDS.map((s, k) => `<button data-s="${k}" aria-label="${s ? s + ' kat hız' : 'Duraklat'}">${s ? '<i></i>'.repeat(k) : ico('pause')}</button>`).join('');
+  $('#projb').innerHTML = ico('scroll') + '<b></b>';
+  $('#projb').onclick = () => togglePanel('proj');
   $('#speeds').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) setSpeed(+b.dataset.s); });
   $('#money').innerHTML = ico('coin') + '<b></b><small></small>';
   $('#popb').innerHTML = ico('people') + '<b></b>';
@@ -98,10 +132,15 @@ function buildChrome() {
 function setTool(t) {
   if (t === 'gov' && G.gov) t = 'pan';
   tool = t;
-  document.querySelectorAll('#tools .tool').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  const grp = groupOf(t);
+  document.querySelectorAll('#tools .tool').forEach(b => {
+    const k = b.dataset.tool, on = k === t || k === grp;
+    b.classList.toggle('on', on);
+    if (GROUPS[k]) b.innerHTML = ico(on ? t : k) + `<span>${on ? TOOL_INFO[t].name : TOOL_INFO[k].name}</span>`;
+  });
   $('#tools .t-gov').hidden = !!G.gov;
   clearPlan();
-  view.setOverlay(t === 'fountain' || t === 'res' ? 'water' : (overlayPinned ? 'water' : null));
+  view.setOverlay(COVER[t] || (overlayPinned ? 'water' : null));
   if (t !== 'pan') { selected = -1; view.select(-1); if (panelKind === 'tile') closePanel(); }
   showHint();
 }
@@ -119,8 +158,9 @@ function tutorialHint() {
   const c = VL.cache(G), T = VL.totals(G);
   if (!c.outside) return 'Yol aracıyla Valilikten batıdaki taş yola bir yol çek. Göçmenler ve ticaret oradan gelir.';
   if (!c.zones[1].length || !c.zones[2].length) return 'Yolların yanına Konut (yeşil) ve Tarla (sarı) alanı çiz.';
-  if (T.P >= 25 && !c.fountains) return 'Konutların arasına bir Çeşme kur: su olmadan evler büyümez.';
+  if (T.P >= 25 && !c.cnt.fountain) return 'Hizmet menüsünden konutların arasına bir Çeşme kur: su olmadan evler büyümez.';
   if (T.P >= 60 && !c.zones[3].length) return 'Kasaba büyüyor: yol kenarına Ticaret (mavi) alanı çiz.';
+  if (G.proj && !G.proj.site) return `Görev: ${VL.PROJECTS[G.proj.i].name}. Üretim menüsünden kaynak topla ve Görev panelinden şantiye kur.`;
   return '';
 }
 function showHint() {
@@ -136,6 +176,9 @@ function updateHud(force) {
   const key = [G.day, Math.round(G.money), T.P, Math.round(VL.avgHap(G)), speed].join('|');
   if (!force && key === hudCache) return; hudCache = key;
   $('#date').textContent = VL.dateText(G);
+  const pj = $('#projb'); pj.hidden = !G.proj && !G.done.length;
+  if (G.proj) { const p = VL.PROJECTS[G.proj.i]; let a = 0, b = 0; for (const k in p.needs) { a += G.proj.got[k]; b += p.needs[k]; } pj.querySelector('b').textContent = '%' + Math.floor(a / b * 100); pj.classList.toggle('alert', !G.proj.site || !!G.proj.late); }
+  else { pj.querySelector('b').textContent = G.done.length + '✓'; pj.classList.remove('alert'); }
   $('#tools .t-gov').hidden = !!G.gov;
   $('#money b').textContent = fmt(G.money);
   const net = G.last.net || 0;
@@ -147,7 +190,7 @@ function updateHud(force) {
   const bar = (d) => Math.max(-1, Math.min(1, Math.tanh(d / 12)));
   const set = (sel, d) => { const el = $(sel), v = bar(d); el.style.setProperty('--v', Math.abs(v)); el.classList.toggle('neg', v < 0); };
   set('#dR i', T.dRes); set('#dF i', T.dFarm); set('#dC i', T.dCom);
-  if (panelKind === 'budget' || panelKind === 'city') renderPanel();
+  if (panelKind === 'budget' || panelKind === 'city' || panelKind === 'proj') renderPanel();
   if (panelKind === 'tile' && selected >= 0) renderPanel();
 }
 
@@ -161,6 +204,7 @@ function renderPanel() {
   if (panelKind === 'budget') { head.textContent = 'Bütçe'; body.innerHTML = budgetHtml(); bindBudget(); }
   else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); }
   else if (panelKind === 'game') { head.textContent = 'Menü'; body.innerHTML = gameHtml(); bindGame(); }
+  else if (panelKind === 'proj') { head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); }; }
   else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; }
 }
 
@@ -171,9 +215,9 @@ function budgetHtml() {
   const v = (x) => x ? sgn(x) : '0';
   return `<p class="lead">Geçen ayın hesabı. Vergi oranını buradan değiştirebilirsin.</p>
   <h3>Gelir</h3>
-  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}
+  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}
   <h3>Gider</h3>
-  ${row('Yolların bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Çeşmeler', v(-(e.fountains || 0)))}
+  ${row('Yolların bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
   <h3>Vergi oranı <output id="taxOut">%${G.taxRate}</output></h3>
   <input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}">
@@ -189,7 +233,7 @@ function bindBudget() {
   r.oninput = () => { G.taxRate = +r.value; $('#taxOut').textContent = '%' + G.taxRate; $('#taxNote').textContent = taxNote(); };
 }
 
-const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', gov: 'Valilik' };
+const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', dirt: 'Maden tozu', gov: 'Valilik' };
 function cityHtml() {
   const T = VL.totals(G);
   const grp = (g, name, jobs) => {
@@ -206,6 +250,46 @@ function cityHtml() {
   ${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
   <p class="note">Bölge talebi, çevredeki köy ve kasabaların ürünlerine ilgisidir. Memnun bir şehirde zamanla artar.</p>`;
 }
+
+/* Görev paneli: aktif görev, teslimat, ambar ve üretim */
+function projHtml() {
+  let h = '';
+  if (G.proj) {
+    const P = G.proj, p = VL.PROJECTS[P.i];
+    const left = Math.max(0, P.due - G.day), ly = Math.floor(left / 360), lm = Math.floor((left % 360) / 30);
+    h += `<div class="grp"><div class="grp-h"><b>${p.name}</b><span class="mood ${P.late ? 'neg' : ''}">${P.late ? 'Süre doldu' : ly + ' yıl ' + lm + ' ay'}</span></div>
+      <p class="note">${p.desc}</p>`;
+    for (const k in p.needs) {
+      const f = Math.min(1, P.got[k] / p.needs[k]);
+      h += `<div class="bar"><span>${VL.RES_NAME[k]}</span><i style="--f:${f}"></i><b>${fmt(P.got[k])} / ${fmt(p.needs[k])}</b></div>`;
+    }
+    if (!P.site) h += `<button class="wide primary" id="gSite">${ico('site')} Şantiye kur</button><p class="note">Şantiye yola bağlı olmalı. Ambardaki kaynaklar her ay en çok ${VL.B.deliverPerMonth} birim taşınır.</p>`;
+    else if (!P.linked) h += '<p class="note neg">Şantiye yol ağına bağlı değil, taşıma yapılamıyor.</p>';
+    else h += `<p class="note">Kaynaklar her ay ambardan şantiyeye taşınıyor (türü başına en çok ${VL.B.deliverPerMonth}).</p>`;
+    h += `<p class="note"><b>Ödül:</b> ${p.reward}</p></div>`;
+  } else if (G.projNext < VL.PROJECTS.length) {
+    const p = VL.PROJECTS[G.projNext];
+    h += `<p class="lead">Sıradaki görev ${p.year}${VL.yearOf(G) >= p.year ? ' (şehir dış yola bağlanınca)' : ''}: <b>${p.name}</b>. ${p.desc}</p>`;
+  } else h += '<p class="lead">Bu dönemin bütün görevleri bitti.</p>';
+  h += `<h3>Ambar <span>itibar ${G.itibar}</span></h3>`;
+  for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}/ay</small>`);
+  const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
+  h += `<p class="note">Ambar her kaynaktan en çok ${VL.B.stockCap} birim tutar, fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
+  if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.year + (d.late ? ' · geç' : ''))).join('');
+  return h;
+}
+
+/* Hizmet ve Üretim alt menüsü */
+function openFlyout(g, btn) {
+  const f = $('#flyout');
+  if (!f.hidden && f.dataset.g === g) { closeFlyout(); return; }
+  f.dataset.g = g;
+  f.innerHTML = GROUPS[g].map(k => `<button data-tool="${k}" class="${k === tool ? 'on' : ''}">${ico(k)}<span><b>${TOOL_INFO[k].name}</b><small>${fmt(VL.SVD[k].cost)}</small></span></button>`).join('');
+  f.hidden = false;
+  const r = btn.getBoundingClientRect();
+  f.style.top = Math.max(52, Math.min(innerHeight - f.offsetHeight - 6, r.top - 4)) + 'px';
+}
+function closeFlyout() { $('#flyout').hidden = true; }
 
 function gameHtml() {
   return `${canFull() && !installed() ? `<button class="wide" id="gFull">${ico('full')} ${isFull() ? 'Tam ekrandan çık' : 'Tam ekran'}</button>` : ''}
@@ -228,7 +312,28 @@ function tileInfo(i) {
   const t = G.t[i], z = G.z[i], lv = G.lv[i];
   const yes = (b) => b ? 'Var' : '<span class="neg">Yok</span>';
   if (G.sv[i] === VL.S_GOV) return { title: 'Valilik', html: `${row('İş', VL.B.govJobs + ' kişiyi geçindirir')}${row('Aylık gider', fmt(VL.B.upkeep.gov))}${row('Dış yola bağlantı', yes(c.outside))}<p class="note">Şehrin yönetim merkezi. Bütün yollar buraya bağlı olmalı.</p>` };
-  if (G.sv[i] === VL.S_FOUNTAIN) return { title: 'Çeşme', html: `${row('Su yarıçapı', VL.B.fountainRadius + ' kare')}${row('Aylık gider', fmt(VL.B.upkeep.fountain))}<p class="note">Çevresindeki evler suya kavuşur ve büyüyebilir.</p>` };
+  const sv = G.sv[i];
+  if (sv === VL.S_SITE || sv === VL.S_LANDMARK) {
+    const m = VL.multiAt(G, i), p = m && VL.PROJECTS.find(q => q.id === m.pid);
+    if (sv === VL.S_SITE) return { title: 'Şantiye · ' + (p ? p.name : ''), html: `${row('Yola bağlı', yes(G.proj && G.proj.linked))}<p class="note">İlerlemeyi Görev panelinde görebilirsin.</p>` };
+    return { title: p ? p.name : 'Anıt', html: `<p class="note">${p ? p.reward : ''}</p>` };
+  }
+  const key = VL.CODE2KEY[sv];
+  if (key && VL.SVD[key]) {
+    const d = VL.SVD[key];
+    const served = d.size === 2 ? true : c.served[i];
+    let h = row('Yola bağlı', yes(served));
+    if (d.radius) h += row('Etki yarıçapı', d.radius + ' kare');
+    if (d.jobs) h += row('Geçindirdiği kişi', d.jobs);
+    if (d.upkeep) h += row('Aylık gider', fmt(d.upkeep));
+    if (d.out) {
+      const f = served ? VL.resourceFactor(G, i, d.need) : 0;
+      h += row('Üretim', `≈${Math.round(d.rate * f)} ${VL.RES_NAME[d.out].toLocaleLowerCase('tr')}/ay`) + row('Ambarda', fmt(G.res[d.out]));
+      h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez.</p>';
+    }
+    h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
+    return { title: d.name, html: h };
+  }
   if (G.r[i]) {
     if (G.r[i] === 2) return { title: 'Dış yol', html: '<p class="note">Kasabaya göçmenler ve tüccarlar bu yoldan gelir. Şehrin yol ağını buraya bağla.</p>' };
     return { title: t === VL.T_WATER ? 'Köprü' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}` };
@@ -254,8 +359,9 @@ function tileInfo(i) {
     }
     return { title: (building ? name + ' (yapılıyor)' : name), html: h };
   }
-  const tn = ['Çayır', 'Nehir', 'Orman', 'Dağ'][t];
-  const note = t === VL.T_FOREST ? 'Ormanı açmak biraz daha pahalıdır.' : t === VL.T_ROCK ? 'Dağlık arazide yapı yapılamaz.' : t === VL.T_WATER ? 'Yol aracıyla köprü kurulabilir.' : 'Boş arazi.';
+  const dep = G.dep && G.dep[i];
+  const tn = dep ? (dep === VL.D_COAL ? 'Kömür yatağı' : 'Demir yatağı') : ['Çayır', 'Nehir', 'Orman', 'Dağ'][t];
+  const note = dep ? `Yanındaki boş kareye ${dep === VL.D_COAL ? 'kömür ocağı' : 'demir madeni'} kurabilirsin (Üretim menüsü).` : t === VL.T_FOREST ? 'Ormanı açmak biraz daha pahalıdır. Yanına oduncu kurulabilir.' : t === VL.T_ROCK ? 'Dağlık arazide yapı yapılamaz; dibine taş ocağı kurulabilir.' : t === VL.T_WATER ? 'Yol aracıyla köprü kurulabilir.' : 'Boş arazi.';
   return { title: tn, html: `<p class="note">${note}</p><p class="note small">Kare ${x}, ${y}</p>` };
 }
 
@@ -322,6 +428,7 @@ function bindInput() {
   const end = (e) => {
     if (!pts.has(e.pointerId)) return;
     pts.delete(e.pointerId);
+    closeFlyout();
     if (gesture && gesture.timer) clearTimeout(gesture.timer);
     const up = e.type === 'pointerup' && pts.size === 0 && gesture;
     if (up && gesture.mode === 'paint') setPlan(gesture.a, gesture.b);
@@ -338,7 +445,7 @@ function bindInput() {
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') { setSpeed(speed ? 0 : lastSpeed); e.preventDefault(); }
-    else if (e.key === '1' || e.key === '2' || e.key === '3') setSpeed(+e.key === 3 ? 3 : +e.key);
+    else if (e.key === '1' || e.key === '2' || e.key === '3') setSpeed(+e.key);
     else if (e.key === 'q' || e.key === 'Q') view.rotate(0.25);
     else if (e.key === 'e' || e.key === 'E') view.rotate(-0.25);
     else if (e.key === 'Enter' && plan) confirmPlan();
@@ -352,7 +459,7 @@ function pair() {
 
 /* Plan: çizilen ama henüz yapılmamış iş. Ancak ✓ ile inşa edilir. */
 let plan = null, anchor = -1;
-const single = () => tool === 'gov' || tool === 'fountain';
+const single = () => tool === 'gov' || !!VL.SVD[tool];
 function tapBuild(t) {
   if (t < 0) return;
   if (single()) { setPlan(t, t); return; }
@@ -467,9 +574,9 @@ function loop(t) {
   const mul = SPEEDS[speed];
   if (mul && $('#menu').hidden && G.gov) {
     acc += dt * 1000 * mul;
-    const dayMs = 2000;   // 1x: bir gün 2 saniye, bir ay 1 dakika
+    const dayMs = DAY_MS;
     let n = 0;
-    while (acc >= dayMs && n < 6) { VL.step(G); acc -= dayMs; n++; }
+    while (acc >= dayMs && n < 8) { VL.step(G); acc -= dayMs; n++; }
     if (n) { view.syncDay(); drainMessages(); updateHud(); }
   }
   if (!$('#menu').hidden) view.rotate(dt * 0.04);   // menü arkasında harita yavaşça döner

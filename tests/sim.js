@@ -45,10 +45,19 @@ function play(seed, years, log) {
       const i = dry[(dry.length / 2) | 0], x = i % N, y = (i / N) | 0;
       for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [2, 0]]) { const r = V.apply(G, 'fountain', [I(x + dx, y + dy)]); if (r.done) break; }
     }
+    // Hizmetler ve üretim: uygun boş, yola bağlı kare bul
+    const spot = (ok) => { const l = lots().filter(ok); return l.length ? l[(l.length / 2) | 0] : -1; };
+    const near = (i) => { const r = c.zones[1].filter(j => G.lv[j] > 0); if (!r.length) return true; const m = r[(r.length / 2) | 0]; return Math.abs(i % N - m % N) + Math.abs(((i / N) | 0) - ((m / N) | 0)) < 6; };
+    const want = (k, minP) => T.P >= minP && (c.cnt[k] || 0) < 1 + Math.floor(T.P / 700) && G.money > V.SVD[k].cost + 300;
+    for (const [k, minP] of [['police', 180], ['school', 260], ['clinic', 380], ['square', 220]]) if (want(k, minP)) { const i = spot(near); if (i >= 0) V.apply(G, k, [i]); }
+    for (const [k, need] of [['lumber', 'forest'], ['quarry', 'rock'], ['coal', 'coal'], ['iron', 'iron']]) {
+      if ((c.cnt[k] || 0) < 1 + Math.floor(T.P / 900) && G.money > V.SVD[k].cost + 400) { const i = spot(j => V.resourceFactor(G, j, need) > 0); if (i >= 0) V.apply(G, k, [i]); }
+    }
+    if (G.proj && !G.proj.site) { const i = spot(() => true); if (i >= 0) V.apply(G, 'site', [i]); }
     // Vergi ayarı: borçtaysa yükselt, rahatsa indir
     if (G.money < 500 && G.taxRate < 14) G.taxRate++; else if (G.money > 6000 && G.taxRate > 9) G.taxRate--;
     if ((m + 1) % 12 === 0) {
-      const row = { yil: V.dateOf(G).year - 1, nufus: T.P, ciftci: G.grp.c, isci: G.grp.i, issiz: T.uc + T.ui, konut: T.cap, hazine: Math.round(G.money), ayNet: Math.round(G.last.net), gida: G.food.net, mutlu: Math.round(V.avgHap(G)), vergi: G.taxRate };
+      const row = { yil: V.dateOf(G).year - 1, nufus: T.P, ciftci: G.grp.c, isci: G.grp.i, issiz: T.uc + T.ui, konut: T.cap, hazine: Math.round(G.money), ayNet: Math.round(G.last.net), gida: G.food.net, mutlu: Math.round(V.avgHap(G)), vergi: G.taxRate, kaynak: V.RES.map(k => Math.round(G.res[k])).join('/'), gorev: G.proj ? V.PROJECTS[G.proj.i].id + (G.proj.site ? '+' : '') : '-', biten: G.done.length, itibar: G.itibar };
       rows.push(row);
     }
   }

@@ -17,6 +17,14 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - Bütçe: vergi geliri, gıda satışı, bakım giderleri, ayarlanabilir vergi oranı.
 - Zaman: duraklat, 1x, 2x, 4x. 1x'te bir ay 1 dakika sürer. Her ay ve uygulamadan çıkarken otomatik kayıt.
 
+## Sürüm 0.2
+- Tempo: 1x'te bir ay 45 saniye; en hızlı ayarda (5x) bir yıl yaklaşık 1,8 dakika. Binalar daha çabuk yapılır, göç daha hızlı.
+- Hizmet menüsü: Çeşme, Meydan (2×2), Karakol, Mektep, Hekimhane. Her biri bir yarıçapı kapsar; seçince kapsama haritada renkle görünür.
+- Yeni memnuniyet etkenleri şehir büyüdükçe belirir: asayiş (150 kişiden sonra), eğitim (200), sağlık (250), meydan, maden tozu.
+- Üretim menüsü: Oduncu (ormanın yanı), Taş ocağı (dağın dibi), Kömür ocağı (kara kayalar), Demir madeni (pas renkli kayalar). İşçilere iş verir; ambar 600 birimi geçince fazlası satılır.
+- On yıllık görevler: 1851 Su kemeri, 1861 Demiryolu, 1871 Taş köprü ve rıhtım, 1881 Saat kulesi. Şantiye kurulur, kaynaklar yol ağıyla her ay taşınır; bitince anıt yükselir, ödül ve itibar gelir.
+- Eski kayıtlar yeni sürümde açılır (maden yatakları haritaya eklenir, ilk görev hemen başlar).
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

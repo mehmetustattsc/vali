@@ -106,6 +106,7 @@ export function createView(canvas, G0) {
       const i = y * N + x, t = G.t[i], h = hOf(x, y), r = V.hash2(x, y, G.seed);
       const x0 = x - N / 2, x1 = x0 + 1, z0 = y - N / 2, z1 = z0 + 1;
       if (t === V.T_WATER) { cc.set(PAL.bed); wpos.push(x0, -0.13, z0, x0, -0.13, z1, x1, -0.13, z1, x0, -0.13, z0, x1, -0.13, z1, x1, -0.13, z0); }
+      else if (t === V.T_ROCK && G.dep && G.dep[i]) cc.set(G.dep[i] === V.D_COAL ? '#3a3735' : '#a25a36').offsetHSL(0, 0, (r - 0.5) * 0.05);
       else if (t === V.T_ROCK) cc.set(G.h[i] >= 5 ? PAL.snow : pick(PAL.rock, r)).offsetHSL(0, 0, (r - 0.5) * 0.05);
       else if (t === V.T_FOREST) cc.set(PAL.forestFloor).offsetHSL(0, 0, (r - 0.5) * 0.02);
       else cc.set(PAL.grass[0]).offsetHSL((V.fbm(x / 9, y / 9, G.seed + 31) - 0.5) * 0.04, 0, (V.fbm(x / 6, y / 6, G.seed + 17) - 0.5) * 0.09 + (r - 0.5) * 0.012);
@@ -273,6 +274,8 @@ export function createView(canvas, G0) {
         put(P.cyl, cx, 0.42, cz, 0.18, 0.05, 0.18, 0, PAL.stone);
         continue;
       }
+      if (sv === V.S_SQUARE || sv === V.S_SITE || sv === V.S_LANDMARK) continue;   // 2×2 yapılar aşağıda
+      if (sv && sv !== V.S_GOV) { drawService(i, sv); continue; }
       if (!z || !lv) continue;
       const x = i % N, y = (i / N) | 0, cx = W(x), cz = W(y), r = V.hash2(x, y, G.seed + 1), r2 = V.hash2(y, x, 5);
       const rot = facing(i), pg = G.pg[i], building = pg < 1;
@@ -325,7 +328,87 @@ export function createView(canvas, G0) {
         if (lv === 3) part(P.box, cx, cz, rot, 0, 0.62, d[2] / 2 + 0.1, d[0] * 0.9, 0.035, 0.16, ac);
       }
     }
+    for (const m of G.multi || []) drawMulti(m);
     for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr']) flush(P[k]);
+  }
+
+  /* Hizmet ve üretim binaları (1×1) */
+  function drawService(i, sv) {
+    const x = i % N, y = (i / N) | 0, cx = W(x), cz = W(y), rot = facing(i), r = V.hash2(x, y, 77);
+    const B_ = (lx, ly, lz, sx, sy, sz, c) => part(P.box, cx, cz, rot, lx, ly, lz, sx, sy, sz, c);
+    const R_ = (lx, ly, lz, sx, sy, sz, c) => part(P.roof, cx, cz, rot, lx, ly, lz, sx, sy, sz, c);
+    if (sv === V.S_POLICE) {
+      B_(0, 0, 0.05, 0.72, 0.5, 0.6, '#d8d1c2'); B_(0, 0.5, 0.05, 0.78, 0.06, 0.66, '#3d4f6b');
+      B_(-0.26, 0, -0.2, 0.22, 0.82, 0.22, '#cfc7b6'); part(P.pyr, cx, cz, rot, -0.26, 0.82, -0.2, 0.3, 0.22, 0.3, '#3d4f6b');
+      B_(0, 0, 0.36, 0.16, 0.26, 0.02, '#2c3440'); B_(0.22, 0.3, 0.36, 0.1, 0.1, 0.02, '#e8c66a');
+    } else if (sv === V.S_SCHOOL) {
+      B_(0, 0, 0.04, 0.84, 0.46, 0.56, '#efe2c4'); R_(0, 0.46, 0.04, 0.9, 0.26, 0.62, '#a9553a');
+      B_(0, 0.62, 0.04, 0.14, 0.2, 0.14, '#efe2c4'); part(P.pyr, cx, cz, rot, 0, 0.82, 0.04, 0.2, 0.16, 0.2, '#7f4b3a');
+      for (const a of [-0.28, -0.1, 0.1, 0.28]) B_(a, 0.2, 0.33, 0.1, 0.14, 0.02, '#5d7d95');
+    } else if (sv === V.S_CLINIC) {
+      B_(0, 0, 0.02, 0.82, 0.56, 0.62, '#f4f1ea'); R_(0, 0.56, 0.02, 0.88, 0.24, 0.68, '#4f7f7a');
+      part(P.cyl, cx, cz, rot, -0.18, 0, 0.38, 0.06, 0.4, 0.06, '#f8f6f0'); part(P.cyl, cx, cz, rot, 0.18, 0, 0.38, 0.06, 0.4, 0.06, '#f8f6f0');
+      B_(0, 0.4, 0.4, 0.5, 0.05, 0.16, '#4f7f7a');
+    } else if (sv === V.S_LUMBER) {
+      B_(-0.2, 0, -0.15, 0.4, 0.3, 0.34, '#8b6a45'); R_(-0.2, 0.3, -0.15, 0.44, 0.16, 0.38, '#5b4636');
+      for (const [a, b] of [[0, 0], [0.09, 0], [0.045, 0.08]]) B_(0.22 + a - 0.04, b, 0.18, 0.08, 0.08, 0.5, '#a07a4c');
+    } else if (sv === V.S_QUARRY) {
+      for (const [a, b, h] of [[-0.2, -0.15, 0.16], [0.05, -0.2, 0.22], [-0.1, 0.15, 0.12], [0.22, 0.12, 0.18]]) B_(a, 0, b, 0.2, h, 0.2, pick(PAL.rock, r + a));
+      B_(0.3, 0, -0.3, 0.05, 0.8, 0.05, '#6d5134'); B_(0.15, 0.78, -0.3, 0.4, 0.04, 0.04, '#6d5134');
+    } else if (sv === V.S_COAL || sv === V.S_IRON) {
+      const pile = sv === V.S_COAL ? '#262524' : '#8a4b2e';
+      B_(-0.2, 0, 0.12, 0.44, 0.3, 0.36, sv === V.S_COAL ? '#55504a' : '#6b5040'); R_(-0.2, 0.3, 0.12, 0.48, 0.14, 0.4, '#3a3532');
+      B_(0.14, 0, -0.26, 0.04, 0.9, 0.04, '#5a4430'); B_(0.34, 0, -0.26, 0.04, 0.9, 0.04, '#5a4430'); B_(0.24, 0.88, -0.26, 0.28, 0.06, 0.06, '#5a4430');
+      part(P.cyl, cx, cz, rot, 0.24, 0.8, -0.26, 0.14, 0.03, 0.14, '#3a3532');
+      part(P.cone, cx, cz, rot, 0.24, 0, 0.18, 0.3, 0.18, 0.3, pile);
+    }
+  }
+
+  /* 2×2 yapılar: meydan, şantiye, tamamlanmış görev anıtları */
+  function drawMulti(m) {
+    const cx = m.x - N / 2 + 1, cz = m.y - N / 2 + 1;
+    const Bx = (x, y, z, sx, sy, sz, c) => put(P.box, cx + x, y, cz + z, sx, sy, sz, 0, c);
+    if (m.k === V.S_SQUARE) {
+      Bx(0, 0, 0, 1.94, 0.03, 1.94, '#cdbf9e');
+      Bx(0, 0.03, 0, 0.42, 0.22, 0.42, PAL.stone); put(P.cyl, cx, 0.25, cz, 0.16, 0.5, 0.16, 0, '#7d6b48'); put(P.cone, cx, 0.75, cz, 0.12, 0.14, 0.12, 0, '#7d6b48');
+      for (const [a, b] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) {
+        put(P.box, cx + a, 0, cz + b, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.14, cz + b, 0.42, 0.6, 0.42, 0, PAL.leaf[1]);
+      }
+      for (const [a, b, w, d] of [[0, -0.42, 0.5, 0.1], [0, 0.42, 0.5, 0.1], [-0.42, 0, 0.1, 0.5], [0.42, 0, 0.1, 0.5]]) Bx(a, 0.03, b, w, 0.08, d, '#8a6845');
+      return;
+    }
+    if (m.k === V.S_SITE) {
+      const P0 = G.proj, p = P0 && V.PROJECTS[P0.i];
+      let f = 0; if (p) { let a = 0, b = 0; for (const k in p.needs) { a += P0.got[k] || 0; b += p.needs[k]; } f = b ? a / b : 0; }
+      for (const [a, b, w, d] of [[0, -0.95, 1.9, 0.04], [0, 0.95, 1.9, 0.04], [-0.95, 0, 0.04, 1.9], [0.95, 0, 0.04, 1.9]]) Bx(a, 0, b, w, 0.16, d, '#8a6a42');
+      Bx(0, 0, 0, 1.5, 0.04, 1.5, '#a89a80');
+      Bx(0, 0.04, 0, 1.2, 0.05 + f * 0.9, 0.9, '#c9c0ad');
+      for (const [a, b] of [[-0.6, -0.45], [0.6, -0.45], [-0.6, 0.45], [0.6, 0.45]]) Bx(a, 0, b, 0.04, 0.2 + f * 1.1, 0.04, '#8a6a42');
+      Bx(0.75, 0, -0.75, 0.06, 1.6, 0.06, '#b5482f'); Bx(0.45, 1.56, -0.75, 0.7, 0.05, 0.05, '#b5482f');
+      for (const [a, b] of [[-0.7, 0.7], [-0.45, 0.72]]) Bx(a, 0, b, 0.2, 0.14, 0.2, '#9b7348');
+      return;
+    }
+    // Anıtlar
+    if (m.pid === 'aqueduct') {
+      for (const a of [-0.78, -0.26, 0.26, 0.78]) Bx(a, 0, 0, 0.2, 0.95, 0.3, '#cfc4ab');
+      Bx(0, 0.95, 0, 1.96, 0.22, 0.34, '#d8ceb6'); Bx(0, 1.17, 0, 1.96, 0.04, 0.16, PAL.waterLit);
+      Bx(-0.55, 0, 0.62, 0.6, 0.28, 0.5, '#bfb39a'); Bx(-0.55, 0.28, 0.62, 0.5, 0.02, 0.4, PAL.waterLit);
+    } else if (m.pid === 'rail') {
+      Bx(0, 0, -0.25, 1.6, 0.55, 0.7, '#b9895f'); put(P.roof, cx, 0.55, cz - 0.25, 1.66, 0.3, 0.76, 0, '#4f4a48');
+      Bx(0, 0, 0.3, 1.9, 0.1, 0.4, '#bdb5a5');
+      for (const b of [0.62, 0.78]) Bx(0, 0, b, 1.96, 0.04, 0.03, '#4a4a4a');
+      for (let a = -0.9; a <= 0.9; a += 0.2) Bx(a, 0, 0.7, 0.06, 0.02, 0.3, '#6b4b2e');
+      Bx(0, 0.86, -0.25, 0.2, 0.2, 0.2, PAL.govWall);
+    } else if (m.pid === 'quay') {
+      Bx(0, 0, 0, 1.9, 0.18, 1.9, '#b8ac94');
+      Bx(-0.5, 0.18, -0.4, 0.6, 0.4, 0.5, '#a9553a'); put(P.roof, cx - 0.5, 0.58, cz - 0.4, 0.66, 0.2, 0.56, 0, '#5f5852');
+      Bx(0.6, 0.18, 0.5, 0.06, 1.2, 0.06, '#6d5134'); Bx(0.35, 1.36, 0.5, 0.55, 0.05, 0.05, '#6d5134');
+      for (const [a, b] of [[0.2, 0.3], [0.35, 0.45], [0.1, 0.55]]) put(P.cyl, cx + a, 0.18, cz + b, 0.14, 0.18, 0.14, 0, '#7a5a3a');
+    } else if (m.pid === 'tower') {
+      Bx(0, 0, 0, 1.94, 0.03, 1.94, '#cdbf9e');
+      Bx(0, 0.03, 0, 0.56, 2.1, 0.56, '#d9cdb2'); part(P.pyr, cx, cz, 0, 0, 2.13, 0, 0.66, 0.5, 0.66, '#5f5852');
+      for (const [a, b] of [[0, 0.29], [0, -0.29], [0.29, 0], [-0.29, 0]]) put(P.box, cx + a, 1.62, cz + b, a ? 0.02 : 0.3, 0.3, a ? 0.3 : 0.02, 0, '#f4efe2');
+    }
   }
 
   /* ---------- hareket eden arabalar ve yayalar ---------- */
@@ -378,15 +461,16 @@ export function createView(canvas, G0) {
   let overlay = null;
   function setOverlay(kind) { overlay = kind; buildOverlay(); }
   function buildOverlay() {
-    const c = V.cache(G), blue = new THREE.Color('#2f8fe0'), red = new THREE.Color('#ff3b1f');
+    const c = V.cache(G), red = new THREE.Color('#ff3b1f');
+    const tint = new THREE.Color({ water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6' }[overlay] || '#2f8fe0');
     flatMesh('ov', ovMat, (q) => {
-      if (overlay !== 'water') return;
+      const cov = overlay && c[overlay]; if (!cov) return;
       for (let i = 0; i < N * N; i++) {
         if (G.t[i] === V.T_WATER || G.t[i] === V.T_ROCK) continue;
-        const dry = !c.water[i] && G.z[i] === V.Z_RES && G.lv[i] > 0;
-        if (!c.water[i] && !dry) continue;
+        const dry = !cov[i] && G.z[i] === V.Z_RES && G.lv[i] > 0;
+        if (!cov[i] && !dry) continue;
         const x = i % N, y = (i / N) | 0, x0 = x - N / 2, z0 = y - N / 2;
-        q(x0, z0, x0 + 1, z0 + 1, 0.02, dry ? red : blue);
+        q(x0, z0, x0 + 1, z0 + 1, 0.02, dry ? red : tint);
       }
     }).renderOrder = 2;
   }
@@ -396,8 +480,9 @@ export function createView(canvas, G0) {
   function select(i) {
     if (i == null || i < 0) { sel.visible = false; return; }
     const x = i % N, y = (i / N) | 0;
-    const big = G.sv[i] === V.S_GOV;
+    const big = G.sv[i] === V.S_GOV, m = !big && V.multiAt(G, i);
     if (big) { sel.scale.set(2, 1, 2); sel.position.set(G.gov.x - N / 2 + 1, 0.03, G.gov.y - N / 2 + 1); }
+    else if (m) { sel.scale.set(2, 1, 2); sel.position.set(m.x - N / 2 + 1, 0.03, m.y - N / 2 + 1); }
     else { sel.scale.set(1, 1, 1); sel.position.set(W(x), 0.03, W(y)); }
     sel.visible = true;
   }

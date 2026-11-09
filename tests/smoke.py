@@ -61,6 +61,29 @@ async def main():
         await pg.wait_for_timeout(500); await shot('06-close')
         await pg.evaluate('()=>__vali.setTool("fountain")'); await pg.wait_for_timeout(300); await shot('06b-water-layer')
         await pg.evaluate('()=>__vali.setTool("pan")')
+        # Hizmet ve üretim: alt menü, karakol, mektep, oduncu/taş ocağı, görev ve şantiye
+        await pg.click('#tools .t-svc'); await pg.wait_for_timeout(200); await shot('06c-flyout')
+        assert await pg.is_visible('#flyout'), 'hizmet alt menüsü açılmalı'
+        await pg.click('#flyout [data-tool=police]'); await pg.wait_for_timeout(100)
+        ext = await pg.evaluate('''()=>{
+          const V=Vali,W=__vali,G=W.G(),N=G.N; G.money+=5000;
+          const c=V.cache(G); const free=[]; for(let i=0;i<N*N;i++) if(c.served[i]&&!G.z[i]&&!G.sv[i]&&!G.r[i]&&(G.t[i]===0||G.t[i]===2)) free.push(i);
+          const put=(k,ok)=>{ for(const i of free.filter(ok||(()=>true))) if(W.paint(k,[i]).done) return true; return false; };
+          const r={police:put('police'),school:put('school'),square:false,lumber:put('lumber',i=>V.resourceFactor(G,i,'forest')>0)};
+          for(const i of free){ if(W.paint('square',[i]).done){ r.square=true; break; } }
+          W.step(30*24);
+          const site=[]; for(const i of free) if(!G.sv[i]&&!G.z[i]) site.push(i);
+          r.proj=!!G.proj; if(G.proj){ for(const i of site) if(W.paint('site',[i]).done){ r.site=true; break; } }
+          G.res.tas=400; G.res.kereste=400; W.step(30*3);
+          r.got=G.proj?JSON.stringify(G.proj.got):'bitti '+G.done.length; r.P=V.totals(G).P; r.hf=JSON.stringify(G.hf.i);
+          return r;
+        }''')
+        print('hizmet/üretim', ext)
+        assert ext['police'] and ext['school'] and ext['proj'], 'karakol, mektep ve görev'
+        await pg.evaluate('()=>{const G=__vali.G(); __vali.view().focus(G.gov.y*G.N+G.gov.x+2, 16)}')
+        await pg.wait_for_timeout(400); await shot('06d-services')
+        await pg.click('#projb'); await pg.wait_for_timeout(200); await shot('06e-project')
+        await pg.click('#panel .x')
         # Paneller
         await pg.click('#money'); await pg.wait_for_timeout(200); await shot('07-budget')
         assert await pg.is_visible('#tax')
@@ -112,6 +135,14 @@ async def main():
         after = await pg.evaluate('()=>Vali.totals(__vali.G()).P')
         print('kayıt', before, '->', after); assert before == after, 'kayıt aynı nüfusla açılmalı'
         await shot('11-continue')
+        # Eski (v1) kayıt yeni sürümde açılır ve görev başlar
+        old = await pg.evaluate('''()=>{ const o=JSON.parse(Vali.serialize(__vali.G())); o.v=1; for(const k of ['dep','res','multi','proj','projNext','done','itibar','fx','made','sold']) delete o[k];
+          for(let i=0;i<o.sv.length;i++) if(o.sv[i]>1&&o.sv[i]!==9) o.sv[i]=0; return JSON.stringify(o); }''')
+        await pg.reload(); await pg.wait_for_timeout(1200)
+        await pg.evaluate('(s)=>localStorage.setItem("vali.save.v1", s)', old)   # sayfa kapanırken yapılan kaydın üstüne
+        await pg.click('#mCont'); await pg.wait_for_timeout(400)
+        mig = await pg.evaluate('()=>{__vali.step(60); const G=__vali.G(); return {v:G.v, proj:!!G.proj, dep:G.dep.filter(Boolean).length}}')
+        print('eski kayıt', mig); assert mig['v'] == 2 and mig['proj'] and mig['dep'] > 0
         # Dikey ekran uyarısı
         await pg.set_viewport_size({'width': 390, 'height': 844}); await pg.wait_for_timeout(200)
         assert await pg.is_visible('#rotate'), 'dikeyde yan çevir uyarısı'
