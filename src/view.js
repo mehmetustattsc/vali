@@ -423,6 +423,12 @@ export function createView(canvas, G0) {
     ray.setFromCamera(ndc, camera);
     return ray.ray.intersectPlane(plane, hit) ? hit.clone() : null;
   }
+  const prj = new THREE.Vector3();
+  function screenOf(i) {        // karenin ekran konumu (piksel)
+    const r = canvas.getBoundingClientRect();
+    prj.set(W(i % N), 0.2, W((i / N) | 0)).project(camera);
+    return { x: r.left + (prj.x + 1) / 2 * r.width, y: r.top + (1 - prj.y) / 2 * r.height, behind: prj.z > 1 };
+  }
   function tileAt(sx, sy) {
     const p = ground(sx, sy); if (!p) return -1;
     const x = Math.floor(p.x + N / 2), y = Math.floor(p.z + N / 2);
@@ -473,7 +479,7 @@ export function createView(canvas, G0) {
   function setGame(g) { G = g; N = G.N; syncAll(); cam.tx = 0; cam.tz = 0; placeCamera(); }
 
   resize(); syncAll(); placeCamera();
-  return { setGame, syncAll, syncDay, syncBuild, frame, resize, tileAt, pan, zoomAt, rotate, focus, setPreview, setOverlay, select, cam, renderer,
+  return { setGame, syncAll, syncDay, syncBuild, frame, resize, tileAt, screenOf, pan, zoomAt, rotate, focus, setPreview, setOverlay, select, cam, renderer,
     get overlay() { return overlay; }, placeCamera };
 }
 

@@ -17,6 +17,8 @@ const ICON = {
   bulldoze: '<path d="M3 17h11l3-6h-6l-2 3H3zM7 20.5a1.5 1.5 0 1 0 0-.01M13 20.5a1.5 1.5 0 1 0 0-.01M17 11l4-6M19 3l3 3"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="M5 12.5 10 17.5 19 7"/>',
+  full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   coin: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.5 9.5c0-1 1-1.6 2.5-1.6s2.5.7 2.5 1.7-1 1.4-2.5 1.7-2.5.8-2.5 1.8 1 1.7 2.5 1.7 2.5-.6 2.5-1.6"/>',
   people: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11a3 3 0 1 0 0-6M17 14c2.5.4 4 2.8 4 6"/>',
@@ -28,8 +30,8 @@ const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="
 const TOOL_INFO = {
   pan: { name: 'Gez', tip: 'Haritada gezin, bir yere dokunup bilgisini gör.' },
   gov: { name: 'Valilik', tip: 'Şehrin merkezi. 2×2 alan kaplar, bir kez kurulur.' },
-  road: { name: 'Yol', tip: 'Sürükleyerek yol çek. Nehir üstünde köprü olur (pahalı).' },
-  res: { name: 'Konut', tip: 'Sürükleyerek konut alanı çiz. Evler talebe göre kendiliğinden yapılır.' },
+  road: { name: 'Yol', tip: 'Başlangıca, sonra bitişe dokun ya da basılı tutup sürükle. Nehirde köprü olur.' },
+  res: { name: 'Konut', tip: 'İki köşeye dokun ya da basılı tutup sürükle. Evler talebe göre kendiliğinden yapılır.' },
   farm: { name: 'Tarla', tip: 'Tarla alanı: şehri besler, fazlası satılır.' },
   com: { name: 'Ticaret', tip: 'Dükkân ve atölyeler: işçilere iş, şehre ticaret vergisi.' },
   fountain: { name: 'Çeşme', tip: 'Çevresine su verir. Su olmadan evler büyümez.' },
@@ -89,6 +91,8 @@ function buildChrome() {
   $('#menuBtn').onclick = () => togglePanel('game');
   $('#panel .x').innerHTML = ico('close');
   $('#panel .x').onclick = closePanel;
+  $('#plan .no').innerHTML = ico('close'); $('#plan .yes').innerHTML = ico('check');
+  $('#plan .no').onclick = clearPlan; $('#plan .yes').onclick = confirmPlan;
 }
 
 function setTool(t) {
@@ -96,7 +100,7 @@ function setTool(t) {
   tool = t;
   document.querySelectorAll('#tools .tool').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('#tools .t-gov').hidden = !!G.gov;
-  view.setPreview([], []);
+  clearPlan();
   view.setOverlay(t === 'fountain' || t === 'res' ? 'water' : (overlayPinned ? 'water' : null));
   if (t !== 'pan') { selected = -1; view.select(-1); if (panelKind === 'tile') closePanel(); }
   showHint();
@@ -204,14 +208,17 @@ function cityHtml() {
 }
 
 function gameHtml() {
-  return `<button class="wide" id="gSave">Kaydet</button>
+  return `${canFull() && !installed() ? `<button class="wide" id="gFull">${ico('full')} ${isFull() ? 'Tam ekrandan çık' : 'Tam ekran'}</button>` : ''}
+  <button class="wide" id="gSave">Kaydet</button>
   <button class="wide ${overlayPinned ? 'on' : ''}" id="gWater">${ico('layers')} Su kapsama katmanı</button>
   <button class="wide" id="gMenu">Ana menü</button>
-  <p class="note">Oyun her ay ve uygulamadan çıkarken kendiliğinden kaydedilir.<br>İki parmakla kaydır, yakınlaştır ve döndür. Bilgisayarda sağ tıkla döndür, tekerlekle yakınlaştır.</p>
+  <p class="note">Oyun her ay ve uygulamadan çıkarken kendiliğinden kaydedilir.</p>
+  <p class="note">Tek parmakla haritayı kaydır, iki parmakla yakınlaştır ve döndür. İnşa ederken iki noktaya dokun ya da basılı tutup sürükle, sonra ✓ ile onayla. Bilgisayarda sürükleyerek çiz, Enter ile onayla, sağ tıkla döndür.</p>
   <p class="note small">Vali · prototip 1 · ${VL.dateText(G)}</p>`;
 }
 function bindGame() {
   $('#gSave').onclick = () => { save(); toast('Kaydedildi.'); };
+  if ($('#gFull')) $('#gFull').onclick = () => { fullscreen(!isFull()); setTimeout(renderPanel, 400); };
   $('#gWater').onclick = () => { overlayPinned = !overlayPinned; setTool(tool); renderPanel(); };
   $('#gMenu').onclick = () => { save(); closePanel(); setSpeed(0); showMenu(!!loadSave()); };
 }
@@ -278,10 +285,19 @@ function bindInput() {
     if (pts.size === 1) {
       if (e.button === 2 || e.button === 1) { gesture = { mode: 'rotate', x: e.clientX, y: e.clientY }; return; }
       const tile = view.tileAt(e.clientX, e.clientY);
-      gesture = { mode: tool === 'pan' ? 'pan' : 'paint', x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, a: tile, b: tile };
-      if (gesture.mode === 'paint') previewPaint();
+      // Tek parmakla sürüklemek her zaman haritayı kaydırır. İnşa araçlarında:
+      // dokun = başlangıç/bitiş noktası, basılı tut ve sürükle = alan çiz. Fareyle doğrudan çizilir.
+      const build = tool !== 'pan', mouse = e.pointerType === 'mouse';
+      gesture = { mode: build && mouse ? 'paint' : 'pan', build, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, a: tile, b: tile, t0: performance.now() };
+      if (gesture.mode === 'paint') showDraft(tile, tile);
+      else if (build) gesture.timer = setTimeout(() => {
+        if (gesture && gesture.mode === 'pan' && !gesture.moved && pts.size === 1 && tile >= 0) {
+          gesture.mode = 'paint'; anchor = -1; if (navigator.vibrate) navigator.vibrate(12); showDraft(tile, tile);
+        }
+      }, 320);
     } else if (pts.size === 2) {
-      view.setPreview([], []); hintOverride = null; showHint();
+      if (gesture && gesture.timer) clearTimeout(gesture.timer);
+      if (gesture && gesture.mode === 'paint') restorePlan();
       gesture = { mode: 'multi', ...pair() };
     }
   });
@@ -300,15 +316,20 @@ function bindInput() {
     }
     if (Math.hypot(e.clientX - gesture.x0, e.clientY - gesture.y0) > 6) gesture.moved = true;
     if (gesture.mode === 'pan' && gesture.moved) { view.pan(e.clientX - gesture.x, e.clientY - gesture.y); }
-    if (gesture.mode === 'paint') { const t = view.tileAt(e.clientX, e.clientY); if (t >= 0 && t !== gesture.b) { gesture.b = t; previewPaint(); } }
+    if (gesture.mode === 'paint') { const t = view.tileAt(e.clientX, e.clientY); if (t >= 0 && t !== gesture.b) { gesture.b = t; showDraft(gesture.a, t); } }
     gesture.x = e.clientX; gesture.y = e.clientY;
   });
   const end = (e) => {
     if (!pts.has(e.pointerId)) return;
     pts.delete(e.pointerId);
-    if (gesture && gesture.mode === 'paint' && pts.size === 0 && e.type === 'pointerup') commitPaint();
-    else if (gesture && gesture.mode === 'pan' && !gesture.moved && pts.size === 0 && e.type === 'pointerup') inspect(view.tileAt(e.clientX, e.clientY));
-    if (pts.size === 0) { gesture = null; view.setPreview([], []); hintOverride = null; showHint(); }
+    if (gesture && gesture.timer) clearTimeout(gesture.timer);
+    const up = e.type === 'pointerup' && pts.size === 0 && gesture;
+    if (up && gesture.mode === 'paint') setPlan(gesture.a, gesture.b);
+    else if (up && gesture.mode === 'pan' && !gesture.moved) {
+      const t = view.tileAt(e.clientX, e.clientY);
+      if (gesture.build) tapBuild(t); else inspect(t);
+    }
+    if (pts.size === 0) gesture = null;
     else if (gesture && gesture.mode === 'multi' && pts.size === 1) gesture = null;
   };
   cv.addEventListener('pointerup', end);
@@ -320,7 +341,8 @@ function bindInput() {
     else if (e.key === '1' || e.key === '2' || e.key === '3') setSpeed(+e.key === 3 ? 3 : +e.key);
     else if (e.key === 'q' || e.key === 'Q') view.rotate(0.25);
     else if (e.key === 'e' || e.key === 'E') view.rotate(-0.25);
-    else if (e.key === 'Escape') { setTool('pan'); closePanel(); }
+    else if (e.key === 'Enter' && plan) confirmPlan();
+    else if (e.key === 'Escape') { if (plan || anchor >= 0) clearPlan(); else { setTool('pan'); closePanel(); } }
   });
 }
 function pair() {
@@ -328,9 +350,62 @@ function pair() {
   return { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
 }
 
-/* Sürüklenen alanı karelere çevirir: yol L biçimli, bölgeler dikdörtgen, tekil yapılar tek kare */
-function paintCells() {
-  const { a, b } = gesture, N = G.N;
+/* Plan: çizilen ama henüz yapılmamış iş. Ancak ✓ ile inşa edilir. */
+let plan = null, anchor = -1;
+const single = () => tool === 'gov' || tool === 'fountain';
+function tapBuild(t) {
+  if (t < 0) return;
+  if (single()) { setPlan(t, t); return; }
+  if (plan && anchor < 0) { anchor = t; plan = null; showDraft(t, t, 'Bitiş noktasına dokun · aynı kareye dokunursan tek kare'); return; }
+  if (anchor < 0) { anchor = t; showDraft(t, t, 'Bitiş noktasına dokun · aynı kareye dokunursan tek kare'); return; }
+  const a = anchor; anchor = -1; setPlan(a, t);
+}
+function showDraft(a, b, msg) {
+  const cells = paintCells(a, b); if (!cells.length) return;
+  const q = VL.quote(G, tool, cells);
+  view.setPreview(q.ok, q.bad);
+  hintOverride = msg || quoteText(q); showHint();
+  $('#plan').hidden = true;
+}
+function quoteText(q) {
+  const cant = q.cost > G.money;
+  return q.ok.length && !(tool === 'gov' && q.bad.length)
+    ? `${TOOL_INFO[tool].name} · ${q.ok.length} kare · <b class="${cant ? 'neg' : ''}">${fmt(q.cost)}</b>${cant ? ' · para yetmiyor' : ''}`
+    : `<span class="neg">${q.err || 'Buraya yapılamaz'}</span>`;
+}
+function setPlan(a, b) {
+  if (a < 0 || b < 0) { clearPlan(); return; }
+  plan = { a, b, tool };
+  const q = VL.quote(G, tool, paintCells(a, b));
+  view.setPreview(q.ok, q.bad);
+  const ok = q.ok.length && !(tool === 'gov' && q.bad.length) && q.cost <= G.money;
+  $('#plan .cost').innerHTML = quoteText(q);
+  $('#plan .yes').disabled = !ok;
+  $('#plan').hidden = false;
+  hintOverride = null; showHint();
+  placePlanBar();
+}
+function restorePlan() { if (plan) setPlan(plan.a, plan.b); else { view.setPreview([], []); hintOverride = null; showHint(); } }
+function clearPlan() { plan = null; anchor = -1; view.setPreview([], []); $('#plan').hidden = true; hintOverride = null; showHint(); }
+function placePlanBar() {
+  if (!plan) return;
+  const el = $('#plan'), p = view.screenOf(plan.b), w = el.offsetWidth, h = el.offsetHeight;
+  const x = Math.max(76, Math.min(innerWidth - w - 8, p.x - w / 2)), y = Math.max(52, Math.min(innerHeight - h - 8, p.y - h - 22));
+  el.style.transform = `translate(${x}px,${y}px)`;
+}
+function confirmPlan() {
+  if (!plan) return;
+  const { a, b } = plan, t = tool, r = VL.apply(G, t, paintCells(a, b));
+  clearPlan();
+  if (!r.done) { toast(r.err); return; }
+  view.syncBuild(); drainMessages();
+  if (t === 'gov') { setTool('road'); setSpeed(1); }
+  updateHud(true); showHint();
+}
+
+/* Plan alanını karelere çevirir: yol L biçimli, bölgeler dikdörtgen, tekil yapılar tek kare */
+function paintCells(a, b) {
+  const N = G.N;
   if (a < 0 || b < 0) return [];
   if (tool === 'gov' || tool === 'fountain') return [b];
   const ax = a % N, ay = (a / N) | 0, bx = b % N, by = (b / N) | 0, out = [];
@@ -344,24 +419,6 @@ function paintCells() {
   const x0 = Math.min(ax, bx), x1 = Math.max(ax, bx), y0 = Math.min(ay, by), y1 = Math.max(ay, by);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) out.push(y * N + x);
   return out;
-}
-function previewPaint() {
-  const cells = paintCells(); if (!cells.length) return;
-  const q = VL.quote(G, tool, cells);
-  view.setPreview(q.ok, q.bad);
-  const cant = q.cost > G.money;
-  hintOverride = q.ok.length && !(tool === 'gov' && q.bad.length)
-    ? `${TOOL_INFO[tool].name} · ${q.ok.length} kare · <b class="${cant ? 'neg' : ''}">${fmt(q.cost)}</b>${cant ? ' · para yetmiyor' : ''}`
-    : `<span class="neg">${q.err || 'Buraya yapılamaz'}</span>`;
-  showHint();
-}
-function commitPaint() {
-  const cells = paintCells(); if (!cells.length) return;
-  const r = VL.apply(G, tool, cells);
-  if (!r.done) { toast(r.err); return; }
-  view.syncBuild(); drainMessages();
-  if (tool === 'gov') { setTool('road'); setSpeed(1); }
-  updateHud(true); showHint();
 }
 function inspect(i) {
   if (i < 0) { closePanel(); return; }
@@ -384,9 +441,23 @@ function showMenu(hasSave) {
       <h3>Başlangıç yılı</h3><div class="chips">${years.map(([y, ok]) => `<button class="chip ${ok ? 'on' : ''}" ${ok ? '' : 'disabled'}>${y}${ok ? '' : ' · yakında'}</button>`).join('')}</div>
       <button class="primary" id="mGo">Şehri kur</button>
     </div></div>`;
-  if (hasSave) $('#mCont').onclick = () => startGame(loadSave() || G);
+  if (hasSave) $('#mCont').onclick = () => { fullscreen(true); startGame(loadSave() || G); };
   $('#mNew').onclick = () => { m.querySelector('.setup').hidden = false; m.querySelector('.menu-actions').hidden = true; };
-  $('#mGo').onclick = () => startGame(VL.newGame({ seed: (Date.now() % 9973) + 1 }));
+  $('#mGo').onclick = () => { fullscreen(true); startGame(VL.newGame({ seed: (Date.now() % 9973) + 1 })); };
+}
+
+/* Tam ekran: tarayıcı sadece bir dokunuşla izin verir. Ana ekrana eklenmiş uygulama zaten tam ekran açılır. */
+const canFull = () => !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+const installed = () => matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches;
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function fullscreen(on) {
+  try {
+    const el = document.documentElement;
+    if (on && !isFull() && !installed() && canFull()) {
+      const p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : el.webkitRequestFullscreen();
+      if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+    } else if (!on && isFull()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } catch (e) { /* izin verilmezse sorun değil */ }
 }
 
 /* ---------- oyun döngüsü ---------- */
@@ -402,6 +473,7 @@ function loop(t) {
     if (n) { view.syncDay(); drainMessages(); updateHud(); }
   }
   if (!$('#menu').hidden) view.rotate(dt * 0.04);   // menü arkasında harita yavaşça döner
+  if (plan) placePlanBar();
   view.frame(dt, $('#menu').hidden ? mul : 0.6);
   requestAnimationFrame(loop);
 }
@@ -410,6 +482,7 @@ function loop(t) {
 self.__vali = {
   G: () => G, view: () => view, setTool, setSpeed, startGame, inspect, save, togglePanel,
   step(n) { for (let k = 0; k < n; k++) VL.step(G); view.syncDay(); view.syncBuild(); drainMessages(); updateHud(true); },
+  plan: () => plan, confirmPlan, tapBuild,
   paint(t, cells) { const r = VL.apply(G, t, cells); view.syncBuild(); drainMessages(); updateHud(true); showHint(); return r; },
 };
 

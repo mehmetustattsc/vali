@@ -64,6 +64,7 @@ async def main():
         # Paneller
         await pg.click('#money'); await pg.wait_for_timeout(200); await shot('07-budget')
         assert await pg.is_visible('#tax')
+        await pg.click('#menuBtn'); await pg.wait_for_timeout(200); await shot('07b-menu'); await pg.click('#menuBtn')
         await pg.click('#popb'); await pg.wait_for_timeout(200); await shot('08-city')
         await pg.click('#panel .x')
         # Gez aracıyla dokunarak bina bilgisi
@@ -74,7 +75,34 @@ async def main():
         await pg.mouse.move(300, 300); await pg.mouse.down(); await pg.mouse.move(420, 300, steps=6)
         await pg.wait_for_timeout(150); await shot('10-drag-road')
         hint = await pg.inner_text('#hint'); print('ipucu:', hint)
-        await pg.mouse.up()
+        await pg.mouse.up(); await pg.wait_for_timeout(150)
+        # Sürüklemek hemen yapmaz: plan ✓ bekler
+        assert await pg.is_visible('#plan'), 'plan onay çubuğu görünmeli'
+        await shot('10b-plan')
+        await pg.click('#plan .no'); assert not await pg.is_visible('#plan')
+        # Dokunmatik: tek parmakla sürüklemek yol çizmez, haritayı kaydırır
+        cnt = await pg.evaluate('()=>__vali.G().r.filter(Boolean).length')
+        cdp = await ctx.new_cdp_session(pg)
+        async def touch(kind, pts):
+            await cdp.send('Input.dispatchTouchEvent', {'type': kind, 'touchPoints': [{'x': x, 'y': y} for x, y in pts]})
+        await touch('touchStart', [(500, 250)])
+        for k in range(1, 8): await touch('touchMove', [(500 - k * 20, 250 + k * 6)])
+        await touch('touchEnd', [])
+        await pg.wait_for_timeout(150)
+        assert await pg.evaluate('()=>__vali.G().r.filter(Boolean).length') == cnt, 'kaydırma yol çizmemeli'
+        assert not await pg.is_visible('#plan')
+        # İki dokunuşla plan, ✓ ile inşa
+        await touch('touchStart', [(430, 300)]); await touch('touchEnd', [])
+        await pg.wait_for_timeout(120)
+        await touch('touchStart', [(560, 300)]); await touch('touchEnd', [])
+        await pg.wait_for_timeout(150); await shot('10c-tap-plan')
+        assert await pg.is_visible('#plan'), 'iki dokunuştan sonra plan çıkmalı'
+        m0 = await pg.evaluate('()=>__vali.G().money')
+        if await pg.is_enabled('#plan .yes'):
+            await pg.click('#plan .yes'); await pg.wait_for_timeout(150)
+            assert await pg.evaluate('()=>__vali.G().money') < m0, 'onaydan sonra para harcanmalı'
+        else:
+            await pg.click('#plan .no')
         # Kayıt ve yeniden yükleme
         await pg.evaluate('()=>__vali.save()')
         before = await pg.evaluate('()=>Vali.totals(__vali.G()).P')
