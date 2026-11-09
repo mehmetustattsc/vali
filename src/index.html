@@ -1,0 +1,22 @@
+<title>Vali</title>
+<style>/*CSS*/</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<div id="app">
+  <canvas id="map" aria-label="Şehir haritası"></canvas>
+  <header id="hud">
+    <div class="hud-l"><div id="date"></div><div id="speeds" role="group" aria-label="Hız"></div></div>
+    <div class="hud-c"><button id="money" class="stat" aria-label="Hazine"></button><button id="popb" class="stat" aria-label="Nüfus"></button><button id="hapb" class="stat" aria-label="Memnuniyet"></button></div>
+    <div class="hud-r">
+      <button id="demand" aria-label="Talep"><span id="dR"><i></i><em>Konut</em></span><span id="dF"><i></i><em>Tarla</em></span><span id="dC"><i></i><em>Ticaret</em></span></button>
+      <button id="menuBtn" aria-label="Menü"></button>
+    </div>
+  </header>
+  <nav id="tools" aria-label="Araçlar"></nav>
+  <div id="hint" hidden></div>
+  <aside id="panel" hidden><div class="panel-h"><h2></h2><button class="x" aria-label="Kapat"></button></div><div class="body"></div></aside>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="menu" class="screen" hidden></div>
+  <div id="rotate"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M20 8c1.5 2 1.5 6 0 8M18.5 6.5 20 8l-1.6 1.2"/></svg><p>Vali yatay ekranda oynanır.<br>Telefonunu yan çevir.</p></div></div>
+</div>
+<script>/*ENGINE*/</script>
+<script type="module">/*APP*/</script>

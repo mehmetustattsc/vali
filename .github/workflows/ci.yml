@@ -1,0 +1,46 @@
+name: Test ve yayın
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Denge testi
+        run: npm test
+      - name: Derle
+        run: python3 tools/build.py
+      - name: Tarayıcı testi
+        run: |
+          pip install playwright==1.47.0
+          python -m playwright install --with-deps chromium
+          python3 tests/smoke.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && !github.event.repository.private
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
