@@ -40,8 +40,8 @@ assert('safety' in G.hf.i, 'asayiş etkeni');
 let s2 = -1; for (let i = 0; i < N * N && s2 < 0; i++) { const q = V.quote(G, 'site', [i]); if (!q.bad.length && q.ok.length === 4 && q.ok.some(j => V.cache(G).served[j])) s2 = i; }
 assert(s2 >= 0, 'şantiye yeri');
 assert(V.apply(G, 'site', [s2]).done, 'şantiye kurulmalı');
-G.res.tas = 600; G.res.kereste = 600;
-for (let d = 0; d < 30 * 6; d++) V.step(G);
+G.money = 1e6;
+for (let d = 0; d < 30 * 16; d++) { if (d % 30 === 0) { G.res.tas = 600; G.res.kereste = 600; } V.step(G); }
 assert(G.done.length === 1 && G.fx.aqueduct, 'su kemeri bitmeli: ' + JSON.stringify(G.proj));
 assert(G.sv[s2] === V.S_LANDMARK, 'anıt yerinde');
 // Kayıt: eski sürüm taşınır
@@ -76,7 +76,7 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
   const y0 = V.totals(H).yieldPP;
   const millSpot = farmZ.map(i => V.neigh4(H, i).find(j => V.quote(H, 'mill', [j]).ok.length)).find(j => j != null);
   assert(millSpot != null && V.apply(H, 'mill', [millSpot]).done, 'değirmen kurulmalı');
-  assert(V.totals(H).yieldPP > y0, 'değirmen verimi artırmalı');
+  assert(V.totals(H).yieldPP > y0 * 1.1, 'değirmen verimi belirgin artırmalı');
   // Yangın: itfaiye yokken yayılır
   const before = H.lv.filter(Boolean).length;
   V.disasters(H, V.totals(H), V.cache(H), 'fire');
@@ -98,8 +98,8 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
   for (let d = 0; d < 60; d++) V.step(H);
   assert(H.proj && V.PROJECTS[H.proj.i].id === 'rail', 'demiryolu görevi');
   let st = -1; for (let i = 0; i < N2 * N2 && st < 0; i++) { const q = V.quote(H, 'site', [i]); if (q.ok.length === 4 && q.ok.some(j => V.cache(H).served[j])) st = i; }
-  V.apply(H, 'site', [st]); H.res.demir = 600; H.res.kereste = 600; H.res.komur = 600;
-  for (let d = 0; d < 30 * 6; d++) V.step(H);
+  V.apply(H, 'site', [st]);
+  for (let d = 0; d < 30 * 14; d++) { if (d % 30 === 0) { H.res.demir = 600; H.res.kereste = 600; H.res.komur = 600; H.money = 1e6; } V.step(H); }
   assert(H.fx.rail && H.railEntry && H.rl.some(r => r === 2), 'ana hat');
   assert(V.quote(H, 'rail', [J(g2 + 5, ry2 + 1)]).err !== 'Demiryolu görevi bitince açılır', 'ray aracı açılmalı');
   // İstasyondan ana hatta ray: BFS (kaya dışı)
@@ -109,6 +109,16 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
   const path = []; for (let k = hitI; k !== -1 && k != null; k = prev.get(k)) path.push(k);
   const rr2 = V.apply(H, 'rail', path.filter(i => !H.rl[i])); assert(rr2.done, 'ray döşenmeli');
   assert(V.cache(H).railOut, 'istasyon ana hatta bağlı');
+  // 0.4: yolcu ve yük istasyonu raya yanaşır, liman kıyıya, iskele suya
+  const tryAll = (k) => { for (let i = 0; i < N2 * N2; i++) { const q = V.quote(H, k, [i]); if (q.ok.length && !q.bad.length) return V.apply(H, k, [i]).done; } return false; };
+  assert(tryAll('pstation'), 'yolcu istasyonu');
+  assert(tryAll('fstation'), 'yük istasyonu');
+  assert(V.cache(H).transit.some(Boolean) && V.cache(H).freight.some(Boolean), 'istasyon kapsamaları');
+  assert(!tryAll('pier'), 'limansız iskele olmaz');
+  if (V.totals(H).P >= 250) {
+    assert(tryAll('port'), 'nehir limanı');
+    const f0 = V.totals(H).fish; assert(tryAll('pier') && V.totals(H).fish > f0, 'iskele balık verir');
+  }
 }
 // v2 kaydı v3'e taşınır
 {

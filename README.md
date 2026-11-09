@@ -33,6 +33,14 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - Orman, haritanın ilk orman miktarına kadar kendini yeniler.
 - Demiryolu görevinden sonra batıda ana hat açılır; istasyon raylarla bağlanınca tren gelip gider, raya yakın ocak ve madenlerin malı %50'ye kadar pahalı satılır, şantiye teslimatı iki katına çıkar.
 
+## Sürüm 0.4
+- Demiryolundan sonra Yolcu istasyonu (ulaşım: memnuniyet, dükkânlara müşteri, bölge talebi) ve Yük istasyonu (kapsadığı ocak ve madenler demiryoluyla daha pahalı satar). İkisi de raya bitişik kurulur.
+- Nehir limanı (2×2, kıyıya, 250 nüfus): gıda ve kaynak satışı daha kârlı, nehirde mavnalar gider gelir. Limandan sonra İskele: kıyıya bitişik suya, her ay balık.
+- Köprüler gerçek köprü: taş ayaklar, tabla, korkuluk, iki yanda rampa; demiryolu köprüsü demir korkuluklu. Arabalar ve tren köprünün üstünden geçer.
+- Değirmenin etkisi %75'e, yarıçapı 5 kareye çıktı.
+- Görevler zorlaştı: yaklaşık iki kat kaynak, hazine payı, daha kısa süre, şantiyeye ayda en çok 45 birim (demiryoluyla 90).
+- Büyük konut, tarla ya da ticaret alanı çizilince araya kendiliğinden sokak yerleşir: her iki sırada bir sokak ve ağa bağlanan bir ara yol. Menüden kapatılabilir.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

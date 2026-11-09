@@ -68,7 +68,7 @@ export function createView(canvas, G0) {
   const P = {
     tCone: pool(geo.cone, 9000), tBlob: pool(geo.blob, 4000), tTrunk: pool(geo.box, 13000),
     box: pool(geo.box, 9000), roof: pool(geo.roof, 6000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200),
-    agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true),
+    agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true), bridge: pool(geo.box, 3000, true), boat: pool(geo.box, 40, true),
   };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();
   const UP = new THREE.Vector3(0, 1, 0);
@@ -201,23 +201,54 @@ export function createView(canvas, G0) {
     const L = (nx, ny) => (nx >= 0 && ny >= 0 && nx < N && ny < N) ? !!arr[ny * N + nx] : extEdge && nx < 0;
     return [L(x, y - 1), L(x + 1, y), L(x, y + 1), L(x - 1, y)];
   }
+  const DECK = 0.2;   // köprü tablası yüksekliği
   function buildRoads() {
-    const cc = new THREE.Color(), rail = new THREE.Color('#8e877b'), steel = new THREE.Color('#4b4846'), wood = new THREE.Color('#6b4b2e');
+    const cc = new THREE.Color(), rail = new THREE.Color('#8e877b'), steel = new THREE.Color('#4b4846'), wood = new THREE.Color('#7a5a3a');
+    P.bridge.count = 0;
     flatMesh('road', roadMat, (q, quad4) => {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const i = y * N + x;
+        const i = y * N + x, onWater = G.t[i] === V.T_WATER;
         if (G.r[i]) {
-          const onWater = G.t[i] === V.T_WATER;
-          cc.set(onWater ? PAL.bridge : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
-          band(q, quad4, W(x), W(y), linksOf(G.r, x, y, G.r[i] === 2), 0.29, onWater ? 0.05 : 0.014, cc);
+          cc.set(onWater ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
+          const L = linksOf(G.r, x, y, G.r[i] === 2);
+          band(q, quad4, W(x), W(y), L, 0.29, onWater ? DECK + 0.002 : 0.014, cc);
+          if (onWater) bridgeTile(x, y, L, 'stone');
+          else rampTo(q, x, y, G.r, 0.29, 0.014, cc);
         }
         if (G.rl && G.rl[i]) {
-          const onWater = G.t[i] === V.T_WATER, L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = (onWater ? 0.07 : 0.022) + (G.r[i] ? 0.01 : 0);
+          const L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = onWater ? DECK + 0.012 : 0.022 + (G.r[i] ? 0.01 : 0);
           band(q, quad4, W(x), W(y), L, 0.22, y0, onWater ? wood : rail);
           band(q, quad4, W(x), W(y), L, 0.022, y0 + 0.012, steel, [-0.11, 0.11]);
+          if (onWater && !G.r[i]) bridgeTile(x, y, L, 'iron');
         }
       }
     });
+    flush(P.bridge);
+  }
+  /* Köprü: taş ayaklar, tabla ve korkuluk; demiryolu köprüsü demir kafesli */
+  function bridgeTile(x, y, L, kind) {
+    const cx = W(x), cz = W(y), along = (L[1] || L[3]) && !(L[0] || L[2]) ? 0 : Math.PI / 2;   // 0: doğu-batı
+    const stone = '#c2b69c', dark = '#8f8470', iron = '#55504a';
+    put(P.bridge, cx, DECK - 0.07, cz, 1.0, 0.07, 0.72, along, kind === 'iron' ? '#6e655a' : stone);          // tabla
+    for (const s of [-0.36, 0.36]) {
+      const ox = Math.sin(along) * s, oz = Math.cos(along) * s;
+      put(P.bridge, cx + ox, DECK, cz + oz, 1.0, 0.1, 0.05, along, kind === 'iron' ? iron : dark);            // korkuluk
+      if (kind === 'iron') put(P.bridge, cx + ox, DECK + 0.1, cz + oz, 1.0, 0.03, 0.03, along, iron);
+    }
+    if ((x + y) % 2 === 0) put(P.bridge, cx, -0.42, cz, 0.24, DECK + 0.35, 0.6, along, kind === 'iron' ? '#7d7366' : stone);   // ayak
+  }
+  /* Köprüye çıkan yolun karada kısa bir rampası olur */
+  function rampTo(q, x, y, arr, w, y0, cc) {
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx; if (!arr[j] || G.t[j] !== V.T_WATER) continue;
+      const cx = W(x), cz = W(y);
+      for (let k = 0; k < 4; k++) {    // basamaklı rampa: kenara doğru yükselir
+        const a = 0.1 + k * 0.1, b = a + 0.1, yy = y0 + (DECK - y0) * (k + 1) / 5;
+        if (dx) q(Math.min(cx + dx * a, cx + dx * b), cz - w, Math.max(cx + dx * a, cx + dx * b), cz + w, yy, cc);
+        else q(cx - w, Math.min(cz + dy * a, cz + dy * b), cx + w, Math.max(cz + dy * a, cz + dy * b), yy, cc);
+      }
+    }
   }
 
   function buildFlats() {
@@ -406,6 +437,14 @@ export function createView(canvas, G0) {
     } else if (sv === V.S_QUARRY) {
       for (const [a, b, h] of [[-0.2, -0.15, 0.16], [0.05, -0.2, 0.22], [-0.1, 0.15, 0.12], [0.22, 0.12, 0.18]]) B_(a, 0, b, 0.2, h, 0.2, pick(PAL.rock, r + a));
       B_(0.3, 0, -0.3, 0.05, 0.8, 0.05, '#6d5134'); B_(0.15, 0.78, -0.3, 0.4, 0.04, 0.04, '#6d5134');
+    } else if (sv === V.S_PIER) {
+      // Kıyıya bakan yönü bul
+      let d = [0, 1]; for (const [a, b] of DIRS) { const j = (y + b) * N + (x + a); if (x + a >= 0 && x + a < N && y + b >= 0 && y + b < N && G.t[j] !== V.T_WATER) { d = [a, b]; break; } }
+      const ang = Math.atan2(d[0], d[1]);
+      put(P.box, cx, 0.04, cz, 0.36, 0.05, 1.0, ang, '#8a6a42');
+      for (const s of [-0.35, 0.05, 0.4]) for (const t of [-0.15, 0.15]) put(P.box, cx + Math.sin(ang) * s + Math.cos(ang) * t, -0.35, cz + Math.cos(ang) * s - Math.sin(ang) * t, 0.05, 0.42, 0.05, ang, '#5b4636');
+      const bx = cx - Math.sin(ang) * 0.1 + Math.cos(ang) * 0.32, bz = cz - Math.cos(ang) * 0.1 - Math.sin(ang) * 0.32;
+      put(P.box, bx, -0.08, bz, 0.18, 0.08, 0.5, ang, '#7a4a2a'); put(P.box, bx, 0, bz, 0.02, 0.4, 0.02, ang, '#5b4636'); put(P.box, bx, 0.12, bz + 0.0, 0.01, 0.22, 0.18, ang, '#f1ece0');
     } else if (sv === V.S_SMALLSQ) {
       put(P.box, cx, 0, cz, 0.96, 0.025, 0.96, 0, '#cdbf9e');
       put(P.box, cx - 0.22, 0, cz - 0.22, 0.06, 0.18, 0.06, 0, PAL.trunk); put(P.blob || P.cone, cx - 0.22, 0.12, cz - 0.22, 0.4, 0.45, 0.4, 0, PAL.leaf[3]);
@@ -441,6 +480,33 @@ export function createView(canvas, G0) {
         put(P.box, cx + a, 0, cz + b, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.14, cz + b, 0.42, 0.6, 0.42, 0, PAL.leaf[1]);
       }
       for (const [a, b, w, d] of [[0, -0.42, 0.5, 0.1], [0, 0.42, 0.5, 0.1], [-0.42, 0, 0.1, 0.5], [0.42, 0, 0.1, 0.5]]) Bx(a, 0.03, b, w, 0.08, d, '#8a6845');
+      return;
+    }
+    if (m.k === V.S_PSTATION) {
+      Bx(0, 0, 0, 1.94, 0.06, 0.94, '#bdb5a5');
+      Bx(0, 0.06, -0.12, 1.3, 0.48, 0.5, '#d6b98c'); put(P.roof, cx, 0.54, cz - 0.12, 1.36, 0.22, 0.56, 0, '#5b4b44');
+      Bx(0, 0.5, 0.28, 1.9, 0.04, 0.34, '#4f5d68');
+      for (const a of [-0.8, -0.27, 0.27, 0.8]) put(P.cyl, cx + a, 0.06, cz + 0.4, 0.04, 0.44, 0.04, 0, '#3a3a3a');
+      Bx(0, 0.62, -0.12, 0.18, 0.18, 0.04, '#f4efe2');
+      for (const a of [-0.5, 0.1, 0.55]) Bx(a, 0.06, 0.22, 0.05, 0.12, 0.05, ['#7a3b2e', '#2e4a7a', '#4a6b3a'][Math.abs(Math.round(a * 10)) % 3]);
+      return;
+    }
+    if (m.k === V.S_FSTATION) {
+      Bx(0, 0, 0, 1.94, 0.04, 0.94, '#a89a80');
+      Bx(-0.35, 0.04, -0.1, 1.1, 0.55, 0.6, '#9c6b4a'); put(P.roof, cx - 0.35, 0.59, cz - 0.1, 1.16, 0.2, 0.66, 0, '#4a4440');
+      for (const [a, b] of [[0.5, 0.15], [0.68, 0.15], [0.5, -0.05], [0.68, 0.3]]) Bx(a, 0.04, b, 0.15, 0.15, 0.15, '#a07a4c');
+      Bx(0.75, 0.04, -0.3, 0.05, 0.95, 0.05, '#5a4430'); Bx(0.55, 0.95, -0.3, 0.45, 0.04, 0.04, '#5a4430');
+      return;
+    }
+    if (m.k === V.S_PORT) {
+      // Suya bakan kenar
+      let sx = 0, sz = 1;
+      for (const [a, b] of DIRS) { const tx = m.x + (a > 0 ? 2 : a < 0 ? -1 : 0), ty = m.y + (b > 0 ? 2 : b < 0 ? -1 : 0); if (tx >= 0 && ty >= 0 && tx < N && ty < N && G.t[ty * N + tx] === V.T_WATER) { sx = a; sz = b; break; } }
+      Bx(0, 0, 0, 1.94, 0.1, 1.94, '#b8ac94');
+      Bx(-sx * 0.4, 0.1, -sz * 0.4, sx ? 0.8 : 1.6, 0.6, sz ? 0.8 : 1.6, '#a9553a');
+      put(P.roof, cx - sx * 0.4, 0.7, cz - sz * 0.4, sx ? 0.86 : 1.66, 0.24, sz ? 0.86 : 1.66, sx ? Math.PI / 2 : 0, '#5f5852');
+      Bx(sx * 0.7, 0.1, sz * 0.7, 0.07, 1.4, 0.07, '#6d5134'); Bx(sx * 0.95, 1.45, sz * 0.95, sx ? 0.6 : 0.05, 0.05, sz ? 0.6 : 0.05, '#6d5134');
+      for (const [a, b] of [[0.25, 0.25], [0.45, 0.1], [0.1, 0.45]]) put(P.cyl, cx + a * (sz ? 1 : sx) + sx * 0.3, 0.1, cz + b * (sx ? 1 : sz) + sz * 0.3, 0.14, 0.18, 0.14, 0, '#7a5a3a');
       return;
     }
     if (m.k === V.S_BIGSQ) {
@@ -535,7 +601,8 @@ export function createView(canvas, G0) {
       }
       const ax = W(g.a % N), az = W((g.a / N) | 0), bx = W(g.b % N), bz = W((g.b / N) | 0);
       const dx = bx - ax, dz = bz - az, x = ax + dx * g.t + dz * 0.13 * g.side, z = az + dz * g.t - dx * 0.13 * g.side;
-      const rot = Math.atan2(dx, dz), onB = G.t[g.a] === V.T_WATER || G.t[g.b] === V.T_WATER ? 0.06 : 0.015;
+      const wa = G.t[g.a] === V.T_WATER, wb = G.t[g.b] === V.T_WATER, onB = wa && wb ? DECK + 0.005 : wa || wb ? 0.015 + (DECK - 0.01) * (wa ? 1 - g.t : g.t) : 0.015;
+      const rot = Math.atan2(dx, dz);
       if (g.cart) { put(P.agent, x, onB, z, 0.12, 0.1, 0.2, rot, g.col); }
       else put(P.agent, x, onB, z, 0.045, 0.12, 0.045, rot, g.col);
     }
@@ -545,10 +612,10 @@ export function createView(canvas, G0) {
   /* ---------- önizleme, kapsama katmanı, seçim ---------- */
   const prevMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false });
   const ovMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false });
-  function setPreview(ok, bad) {
-    const g = new THREE.Color('#5bd18a'), r = new THREE.Color('#e5533d');
+  function setPreview(ok, bad, roads) {
+    const g = new THREE.Color('#5bd18a'), r = new THREE.Color('#e5533d'), rd = new THREE.Color('#c9a46a');
     flatMesh('prev', prevMat, (q) => {
-      for (const [list, c] of [[ok, g], [bad, r]]) for (const i of list || []) {
+      for (const [list, c] of [[ok, g], [bad, r], [roads, rd]]) for (const i of list || []) {
         if (i < 0) continue;
         const x = i % N, y = (i / N) | 0, x0 = x - N / 2, z0 = y - N / 2, h = G.t[i] === V.T_ROCK ? G.h[i] * 0.45 : G.t[i] === V.T_WATER ? 0.06 : 0;
         q(x0 + 0.02, z0 + 0.02, x0 + 0.98, z0 + 0.98, h + 0.03, c);
@@ -559,7 +626,7 @@ export function createView(canvas, G0) {
   function setOverlay(kind) { overlay = kind; buildOverlay(); }
   function buildOverlay() {
     const c = V.cache(G), red = new THREE.Color('#ff3b1f');
-    const tint = new THREE.Color({ water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6', fire: '#e8562c', fun: '#d6b13a', flood: '#3fa36a', mill: '#d9c24a' }[overlay] || '#2f8fe0');
+    const tint = new THREE.Color({ transit: '#e07a3a', freight: '#8a6a42', water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6', fire: '#e8562c', fun: '#d6b13a', flood: '#3fa36a', mill: '#d9c24a' }[overlay] || '#2f8fe0');
     flatMesh('ov', ovMat, (q) => {
       const cov = overlay && c[overlay]; if (!cov) return;
       for (let i = 0; i < N * N; i++) {
@@ -652,11 +719,11 @@ export function createView(canvas, G0) {
     if (end < 0) { train = null; return; }
     const path = []; for (let k = end; k !== -1; k = prev.get(k)) path.unshift(k);
     const pts = [];
-    for (let k = 6; k >= 1; k--) pts.push([W(-k), W(G.railEntry.y)]);     // haritanın dışından gelir
-    for (const i of path) pts.push([W(i % N), W((i / N) | 0)]);
+    for (let k = 6; k >= 1; k--) pts.push([W(-k), W(G.railEntry.y), 0.05]);     // haritanın dışından gelir
+    for (const i of path) pts.push([W(i % N), W((i / N) | 0), G.t[i] === V.T_WATER ? DECK + 0.03 : 0.05]);
     train = { pts, s: 0, dir: 1, wait: 3, len: pts.length - 1 };
   }
-  function at(t, s) { const k = Math.max(0, Math.min(t.len - 1e-6, s)), i = Math.floor(k), f = k - i, a = t.pts[i], b = t.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[0] - a[0], b[1] - a[1])]; }
+  function at(t, s) { const k = Math.max(0, Math.min(t.len - 1e-6, s)), i = Math.floor(k), f = k - i, a = t.pts[i], b = t.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[0] - a[0], b[1] - a[1]), a[2] + (b[2] - a[2]) * f]; }
   function stepTrain(dt) {
     if (!train) return;
     const t = train;
@@ -669,14 +736,41 @@ export function createView(canvas, G0) {
     P.train.count = 0;
     const cols = ['#2b2b2b', '#7a3b2e', '#3e5b7a', '#6b6b3a'];
     for (let k = 0; k < 4; k++) {
-      const [x, z, rot] = at(t, t.s - k * 0.62 * t.dir), yb = 0.05;
+      const [x, z, rot, yb] = at(t, t.s - k * 0.62 * t.dir);
       if (k === 0) { put(P.train, x, yb, z, 0.3, 0.26, 0.5, rot, cols[0]); put(P.train, x + Math.sin(rot) * 0.15 * t.dir, yb + 0.26, z + Math.cos(rot) * 0.15 * t.dir, 0.07, 0.14, 0.07, rot, '#1e1e1e'); }
       else put(P.train, x, yb, z, 0.28, 0.24, 0.52, rot, cols[k]);
     }
     flush(P.train);
   }
 
-  function syncAll() { N = G.N; lastTv = G.tv; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); }
+  /* Nehir limanı varken nehirde yelkenli mavnalar gider gelir */
+  let boats = [], river = null;
+  function syncBoats() {
+    const c = V.cache(G);
+    if (!c.cnt.port) { boats = []; P.boat.count = 0; flush(P.boat); return; }
+    river = [];
+    for (let y = 0; y < N; y++) { let s = 0, k = 0; for (let x = 0; x < N; x++) if (G.t[y * N + x] === V.T_WATER) { s += x; k++; } river.push(k ? s / k : null); }
+    if (river.some(v => v == null)) { boats = []; return; }
+    if (!boats.length) boats = [{ s: 5, dir: 1, col: '#7a4a2a' }, { s: N - 12, dir: -1, col: '#6b5040' }, { s: N / 2, dir: 1, col: '#80583a' }];
+  }
+  function stepBoats(dt) {
+    if (!boats.length || !river) return;
+    P.boat.count = 0;
+    for (const b of boats) {
+      b.s += dt * 0.5 * b.dir;
+      if (b.s > N + 3) b.s = -3; if (b.s < -3) b.s = N + 3;
+      const y = Math.max(0, Math.min(N - 1.001, b.s)), i = Math.floor(y), f = y - i;
+      const a = river[i], c = river[Math.min(N - 1, i + 1)], x = a + (c - a) * f + 0.5 + 0.28 * b.dir;
+      const rot = Math.atan2((c - a), 1) * b.dir + (b.dir < 0 ? Math.PI : 0);
+      const wx = x - N / 2, wz = b.s - N / 2 + 0.5;
+      put(P.boat, wx, -0.13, wz, 0.22, 0.1, 0.6, rot, b.col);
+      put(P.boat, wx, -0.03, wz, 0.02, 0.5, 0.02, rot, '#5b4636');
+      put(P.boat, wx + Math.cos(rot) * 0.02, 0.05, wz - Math.sin(rot) * 0.02, 0.015, 0.36, 0.3, rot, '#f1ece0');
+    }
+    flush(P.boat);
+  }
+
+  function syncAll() { N = G.N; lastTv = G.tv; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats(); }
   let lastTv = -1;
   function syncDay() {      // her oyun günü: binalar ve tarlalar
     if (G.tv !== lastTv) { lastTv = G.tv; buildTerrain(); buildTrees(); buildRoads(); syncTrain(); }
@@ -686,13 +780,13 @@ export function createView(canvas, G0) {
     if (overlay) buildOverlay();
   }
   function syncBuild() {    // oyuncu bir şey inşa ettiğinde
-    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain();
+    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats();
     buildGov();
   }
   let clock = 0;
   function frame(dt, running) {
     clock += dt;
-    if (running) { stepAgents(dt * running); stepTrain(dt * running); }
+    if (running) { stepAgents(dt * running); stepTrain(dt * running); stepBoats(dt * running); }
     if (govGroup) govGroup.traverse(o => { if (o.userData.flag) o.rotation.y = Math.sin(clock * 2.2) * 0.25; });
     water && (water.material.opacity = 0.8 + Math.sin(clock * 0.9) * 0.04);
     renderer.render(scene, camera);
