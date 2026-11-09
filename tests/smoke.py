@@ -84,6 +84,45 @@ async def main():
         await pg.wait_for_timeout(400); await shot('06d-services')
         await pg.click('#projb'); await pg.wait_for_timeout(200); await shot('06e-project')
         await pg.click('#panel .x')
+        # 0.3: ulaşım alt menüsü, çapraz yol, büyük yapılar, afet, tren
+        await pg.click('#tools .t-way'); await pg.wait_for_timeout(150); await shot('06f-way')
+        assert await pg.is_disabled('#flyout [data-tool=rail]'), 'ray görevden önce kilitli'
+        await pg.click('#flyout [data-tool=road]')
+        big = await pg.evaluate('''()=>{
+          const V=Vali,W=__vali,G=W.G(),N=G.N; G.money+=60000;
+          // nüfusu büyük yapılar için zorla
+          const c=V.cache(G); for(const i of c.zones[1]) if(G.lv[i]>0){ G.lv[i]=3; G.pg[i]=1; G.pop[i]=28; } G.grp.i+=600; V.touch(G);
+          const P=V.totals(G).P;
+          const tryAll=(k)=>{ for(let i=0;i<N*N;i++){ const q=V.quote(G,k,[i]); if(q.ok.length&&!q.bad.length&&q.ok.some(j=>V.cache(G).served[j])) return W.paint(k,[i]).done; } return false; };
+          const r={P, bigsq:tryAll('bigsq'), hippo:tryAll('hippo'), fire:tryAll('fire'), mill:tryAll('mill'), smallsq:tryAll('smallsq')};
+          V.disasters(G,V.totals(G),V.cache(G),'fire'); W.step(1);
+          // demiryolu görevini bitir ve istasyonu ana hatta bağla
+          G.done.push({id:'aqueduct',year:1855}); G.fx.aqueduct=1; G.proj=null; G.projNext=1; G.day=Math.max(G.day,360*11+5);
+          for(const m of G.multi) if(m.k===V.S_SITE){ for(const j of V.multiTiles(G,m)) G.sv[j]=0; } G.multi=G.multi.filter(m=>m.k!==V.S_SITE);
+          W.step(35); r.rail=!!G.proj;
+          for(let i=0;i<N*N;i++){ const q=V.quote(G,'site',[i]); if(q.ok.length===4&&q.ok.some(j=>V.cache(G).served[j])){ W.paint('site',[i]); break; } }
+          G.res.demir=600; G.res.kereste=600; G.res.komur=600; W.step(30*5); r.fx=!!G.fx.rail;
+          const m=G.multi.find(q=>q.pid==='rail'); const goal=G.railEntry.y*N+G.railEntry.x+4;
+          const prev=new Map(),q=[]; for(const t of V.multiTiles(G,m)) for(const j of V.neigh4(G,t)) if(!prev.has(j)&&!G.sv[j]){prev.set(j,-1);q.push(j);}
+          let hit=-1; while(q.length){ const i=q.shift(); if(i===goal||V.neigh4(G,i).includes(goal)){hit=i;break;} for(const j of V.neigh4(G,i)) if(!prev.has(j)&&G.t[j]!==3&&!G.sv[j]&&!(G.z[j]&&G.lv[j]>0)&&!G.rl[j]){prev.set(j,i);q.push(j);} }
+          const path=[]; for(let k=hit;k!==-1&&k!=null;k=prev.get(k)) path.push(k);
+          r.railLaid=W.paint('rail',path.filter(i=>!G.rl[i])).done; r.out=V.cache(G).railOut;
+          __vali.view().focus(m.y*N+m.x, 14);
+          return r;
+        }''')
+        print('0.3', big)
+        assert big['bigsq'] and big['hippo'] and big['fire'] and big['fx'] and big['railLaid'] and big['out'], big
+        await pg.evaluate('()=>__vali.setSpeed(3)'); await pg.wait_for_timeout(2500); await shot('06g-train')
+        await pg.evaluate('()=>{const G=__vali.G(),m=G.multi.find(q=>q.k===Vali.S_HIPPO); __vali.view().focus(m.y*G.N+m.x+1, 13)}'); await pg.wait_for_timeout(300); await shot('06h-hippo')
+        await pg.evaluate('()=>{const G=__vali.G(),m=G.multi.find(q=>q.k===Vali.S_BIGSQ); __vali.view().focus(m.y*G.N+m.x+1, 11)}'); await pg.wait_for_timeout(300); await shot('06i-bigsq')
+        await pg.evaluate('()=>__vali.setSpeed(0)')
+        await pg.click('#popb'); await pg.wait_for_timeout(200)
+        await pg.evaluate('()=>document.querySelector("#panel .body").scrollTop=9999'); await pg.wait_for_timeout(100); await shot('06j-risk')
+        await pg.click('#panel .x')
+        # çapraz yol önizlemesi
+        await pg.evaluate('()=>{__vali.setTool("road"); const G=__vali.G(); __vali.view().focus(G.gov.y*G.N+G.gov.x, 22)}')
+        await pg.mouse.move(380, 160); await pg.mouse.down(); await pg.mouse.move(520, 300, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(150)
+        await shot('06k-diag'); await pg.click('#plan .no')
         # Paneller
         await pg.click('#money'); await pg.wait_for_timeout(200); await shot('07-budget')
         assert await pg.is_visible('#tax')
@@ -142,7 +181,7 @@ async def main():
         await pg.evaluate('(s)=>localStorage.setItem("vali.save.v1", s)', old)   # sayfa kapanırken yapılan kaydın üstüne
         await pg.click('#mCont'); await pg.wait_for_timeout(400)
         mig = await pg.evaluate('()=>{__vali.step(60); const G=__vali.G(); return {v:G.v, proj:!!G.proj, dep:G.dep.filter(Boolean).length}}')
-        print('eski kayıt', mig); assert mig['v'] == 2 and mig['proj'] and mig['dep'] > 0
+        print('eski kayıt', mig); assert mig['v'] == 3 and mig['proj'] and mig['dep'] > 0
         # Dikey ekran uyarısı
         await pg.set_viewport_size({'width': 390, 'height': 844}); await pg.wait_for_timeout(200)
         assert await pg.is_visible('#rotate'), 'dikeyde yan çevir uyarısı'

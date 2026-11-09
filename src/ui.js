@@ -35,6 +35,15 @@ const ICON = {
   coal: '<path d="M4 14h16l-2 5H6zM7 14l2-5h6l2 5M8 21a1 1 0 1 0 0-.01M16 21a1 1 0 1 0 0-.01"/>',
   iron: '<path d="M4 10h12c0 2.5 2 4 4 4v2H4zM8 16v4h8v-4M4 10V7h9"/>',
   site: '<path d="M4 21V4h11M4 7h14l-3 4M15 4v7M18 7v8M16 15h4v4h-4zM2 21h20"/>',
+  way: '<path d="M7 21 10 3M17 21 14 3M12 6v2M12 11v2M12 16v2"/>',
+  rail: '<path d="M8 3 6 21M16 3l2 18M6.5 7h11M6 12h12M5.5 17h13"/>',
+  levee: '<path d="M2 18c3 0 3-2 6-2s3 2 6 2 3-2 6-2M4 13l4-6h8l4 6z"/>',
+  smallsq: '<rect x="5" y="5" width="14" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  bigsq: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/>',
+  fire: '<path d="M12 3c1 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/>',
+  hippo: '<ellipse cx="12" cy="12" rx="9.5" ry="6.5"/><ellipse cx="12" cy="12" rx="5.5" ry="2.8"/>',
+  barracks: '<path d="M3 21V9l9-5 9 5v12M3 21h18M8 21v-5h8v5M12 4V1M12 1h4v2h-4"/>',
+  mill: '<path d="M9 21l1.5-10h3L15 21zM12 11 6 5M12 11l6-6M12 11 6 17M12 11l6 6"/>',
   scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
 };
 const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
@@ -55,13 +64,22 @@ const TOOL_INFO = {
   quarry: { name: 'Taş ocağı', tip: 'Dağın dibine kur. Taş üretir.' },
   coal: { name: 'Kömür ocağı', tip: 'Kara kayaların (kömür yatağı) yanına kur.' },
   iron: { name: 'Demir madeni', tip: 'Pas renkli kayaların (demir yatağı) yanına kur.' },
+  rail: { name: 'Ray', tip: 'Demiryolu görevinden sonra açılır. İstasyonu batıdaki ana hatta bağla; ocak ve madenleri raya yanaştır.' },
+  levee: { name: 'Set', tip: 'Nehir kenarına çek: 2 kare içindeki evleri ve tarlaları selden korur.' },
+  smallsq: { name: 'Köşe meydanı', tip: 'Küçük, ucuz meydan: yakın çevresini güzelleştirir.' },
+  bigsq: { name: 'Yuvarlak meydan', tip: '3×3 havuzlu meydan: geniş çevreyi mutlu eder. 300 nüfustan sonra.' },
+  fire: { name: 'İtfaiye', tip: 'Kapsadığı yerde yangın yayılmaz, çoğu hemen söndürülür.' },
+  hippo: { name: 'Hipodrom', tip: '4×3 at yarışı pisti: geniş bir alanda eğlence. 600 nüfustan sonra.' },
+  barracks: { name: 'Kışla', tip: '3×2 kışla: bütün haritada asayiş. Gideri yüksek, ayda 40 gıda ve 8 kömür tüketir. 500 nüfustan sonra.' },
+  mill: { name: 'Değirmen', tip: 'Çevresindeki tarlaların verimini artırır; daha az tarla yeter.' },
   site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
-  svc: { name: 'Hizmet' }, ind: { name: 'Üretim' },
+  svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
-const GROUPS = { svc: ['fountain', 'square', 'police', 'school', 'clinic'], ind: ['lumber', 'quarry', 'coal', 'iron'] };
+const GROUPS = { way: ['road', 'rail', 'levee'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill'] };
+const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
-const COVER = { fountain: 'water', res: 'water', square: 'square', police: 'police', school: 'school', clinic: 'clinic' };
+const COVER = { fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
 const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han'] };
 const ZONE_NAME = { 1: 'Konut alanı', 2: 'Tarla alanı', 3: 'Ticaret alanı' };
 const SPEEDS = [0, 1, 2, 5];
@@ -101,7 +119,7 @@ function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ?
 
 /* ---------- arayüz iskeleti ---------- */
 function buildChrome() {
-  $('#tools').innerHTML = ['pan', 'gov', 'road', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze'].map(k =>
+  $('#tools').innerHTML = ['pan', 'gov', 'way', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze'].map(k =>
     `<button class="tool t-${k}" data-tool="${k}" aria-label="${TOOL_INFO[k].name}">${ico(k)}<span>${TOOL_INFO[k].name}</span></button>`).join('');
   $('#tools').addEventListener('click', e => {
     const b = e.target.closest('[data-tool]'); if (!b) return;
@@ -160,6 +178,7 @@ function tutorialHint() {
   if (!c.zones[1].length || !c.zones[2].length) return 'Yolların yanına Konut (yeşil) ve Tarla (sarı) alanı çiz.';
   if (T.P >= 25 && !c.cnt.fountain) return 'Hizmet menüsünden konutların arasına bir Çeşme kur: su olmadan evler büyümez.';
   if (T.P >= 60 && !c.zones[3].length) return 'Kasaba büyüyor: yol kenarına Ticaret (mavi) alanı çiz.';
+  if (G.fx && G.fx.rail && !c.railOut) return 'Ulaşım menüsünden Ray seç: istasyonu batıdaki ana demiryolu hattına bağla.';
   if (G.proj && !G.proj.site) return `Görev: ${VL.PROJECTS[G.proj.i].name}. Üretim menüsünden kaynak topla ve Görev panelinden şantiye kur.`;
   return '';
 }
@@ -217,7 +236,7 @@ function budgetHtml() {
   <h3>Gelir</h3>
   ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}
   <h3>Gider</h3>
-  ${row('Yolların bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
+  ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
   <h3>Vergi oranı <output id="taxOut">%${G.taxRate}</output></h3>
   <input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}">
@@ -233,7 +252,7 @@ function bindBudget() {
   r.oninput = () => { G.taxRate = +r.value; $('#taxOut').textContent = '%' + G.taxRate; $('#taxNote').textContent = taxNote(); };
 }
 
-const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', dirt: 'Maden tozu', gov: 'Valilik' };
+const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', fun: 'Eğlence', army: 'Ordu', dirt: 'Maden tozu', event: 'Afet', gov: 'Valilik' };
 function cityHtml() {
   const T = VL.totals(G);
   const grp = (g, name, jobs) => {
@@ -248,6 +267,7 @@ function cityHtml() {
   <h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${row('Tüketim', fmt(G.food.cons))}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}
   <h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}
   ${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
+  ${riskHtml()}
   <p class="note">Bölge talebi, çevredeki köy ve kasabaların ürünlerine ilgisidir. Memnun bir şehirde zamanla artar.</p>`;
 }
 
@@ -284,17 +304,34 @@ function openFlyout(g, btn) {
   const f = $('#flyout');
   if (!f.hidden && f.dataset.g === g) { closeFlyout(); return; }
   f.dataset.g = g;
-  f.innerHTML = GROUPS[g].map(k => `<button data-tool="${k}" class="${k === tool ? 'on' : ''}">${ico(k)}<span><b>${TOOL_INFO[k].name}</b><small>${fmt(VL.SVD[k].cost)}</small></span></button>`).join('');
+  const P = VL.totals(G).P;
+  f.classList.toggle('two', GROUPS[g].length > 5);
+  f.innerHTML = GROUPS[g].map(k => {
+    const d = VL.SVD[k], locked = k === 'rail' ? !(G.fx && G.fx.rail) : d && d.minP && P < d.minP;
+    const cost = k === 'road' ? VL.B.cost.road + '/kare' : k === 'rail' ? VL.B.cost.rail + '/kare' : d.line ? d.cost + '/kare' : fmt(d.cost);
+    const sub = locked ? (k === 'rail' ? 'Demiryolu görevinden sonra' : d.minP + ' nüfustan sonra') : cost;
+    return `<button data-tool="${k}" class="${k === tool ? 'on' : ''}" ${locked ? 'disabled' : ''}>${ico(k)}<span><b>${TOOL_INFO[k].name}</b><small>${sub}</small></span></button>`;
+  }).join('');
   f.hidden = false;
   const r = btn.getBoundingClientRect();
   f.style.top = Math.max(52, Math.min(innerHeight - f.offsetHeight - 6, r.top - 4)) + 'px';
 }
 function closeFlyout() { $('#flyout').hidden = true; }
 
+function riskHtml() {
+  const r = G.risk || {}, off = G.opt && !G.opt.disasters;
+  const bar = (name, v, tip) => `<div class="bar"><span>${name}</span><i style="--f:${(v || 0) / 100}" class="${v > 50 ? 'hot' : ''}"></i><b>%${v || 0}</b></div><p class="note small">${tip}</p>`;
+  return `<h3>Afet riskleri${off ? ' <span>kapalı</span>' : ''}</h3>
+  ${bar('Yangın', r.fire, 'İtfaiye kur: kapsadığı yerde yangın yayılmaz.')}
+  ${bar('Sel', r.flood, 'Nehrin 2 kare yakınındaki binalar risk altında. Kıyıya Set çek (Ulaşım).')}
+  ${bar('Salgın', r.plague, 'Çeşme ve hekimhane kapsamı ile su kemeri salgın riskini düşürür.')}`;
+}
+
 function gameHtml() {
   return `${canFull() && !installed() ? `<button class="wide" id="gFull">${ico('full')} ${isFull() ? 'Tam ekrandan çık' : 'Tam ekran'}</button>` : ''}
   <button class="wide" id="gSave">Kaydet</button>
   <button class="wide ${overlayPinned ? 'on' : ''}" id="gWater">${ico('layers')} Su kapsama katmanı</button>
+  <button class="wide ${G.opt && G.opt.disasters ? 'on' : ''}" id="gDis">Doğal afetler: ${G.opt && G.opt.disasters ? 'açık' : 'kapalı'}</button>
   <button class="wide" id="gMenu">Ana menü</button>
   <p class="note">Oyun her ay ve uygulamadan çıkarken kendiliğinden kaydedilir.</p>
   <p class="note">Tek parmakla haritayı kaydır, iki parmakla yakınlaştır ve döndür. İnşa ederken iki noktaya dokun ya da basılı tutup sürükle, sonra ✓ ile onayla. Bilgisayarda sürükleyerek çiz, Enter ile onayla, sağ tıkla döndür.</p>
@@ -304,6 +341,7 @@ function bindGame() {
   $('#gSave').onclick = () => { save(); toast('Kaydedildi.'); };
   if ($('#gFull')) $('#gFull').onclick = () => { fullscreen(!isFull()); setTimeout(renderPanel, 400); };
   $('#gWater').onclick = () => { overlayPinned = !overlayPinned; setTool(tool); renderPanel(); };
+  $('#gDis').onclick = () => { G.opt.disasters = !G.opt.disasters; renderPanel(); };
   $('#gMenu').onclick = () => { save(); closePanel(); setSpeed(0); showMenu(!!loadSave()); };
 }
 
@@ -321,7 +359,7 @@ function tileInfo(i) {
   const key = VL.CODE2KEY[sv];
   if (key && VL.SVD[key]) {
     const d = VL.SVD[key];
-    const served = d.size === 2 ? true : c.served[i];
+    const served = (d.w || 1) > 1 ? true : c.served[i];
     let h = row('Yola bağlı', yes(served));
     if (d.radius) h += row('Etki yarıçapı', d.radius + ' kare');
     if (d.jobs) h += row('Geçindirdiği kişi', d.jobs);
@@ -333,6 +371,12 @@ function tileInfo(i) {
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
     return { title: d.name, html: h };
+  }
+  const mk = G.mark && G.mark[i];
+  const markNote = mk ? `<p class="note neg">${mk.k === 'burn' ? 'Yangın yeri: binalar zamanla yeniden yapılır.' : 'Sel suları çekiliyor.'}</p>` : '';
+  if (G.rl && G.rl[i] && !G.r[i]) {
+    if (G.rl[i] === 2) return { title: 'Ana demiryolu hattı', html: '<p class="note">Komşu şehre giden hat. İstasyonu buraya raylarla bağla.</p>' };
+    return { title: t === VL.T_WATER ? 'Demiryolu köprüsü' : 'Ray', html: `${row('Aylık bakım', VL.B.upkeep.rail)}${row('İstasyona bağlı', yes(c.rnet[i]))}${row('Ana hatta bağlı', yes(c.railOut))}` };
   }
   if (G.r[i]) {
     if (G.r[i] === 2) return { title: 'Dış yol', html: '<p class="note">Kasabaya göçmenler ve tüccarlar bu yoldan gelir. Şehrin yol ağını buraya bağla.</p>' };
@@ -357,7 +401,7 @@ function tileInfo(i) {
       h += row('Geçindirdiği kişi', f);
       if (!lv) h += '<p class="note">Nüfus 20 kişiyi geçince dükkânlar açılır.</p>';
     }
-    return { title: (building ? name + ' (yapılıyor)' : name), html: h };
+    return { title: (building ? name + ' (yapılıyor)' : name), html: h + markNote };
   }
   const dep = G.dep && G.dep[i];
   const tn = dep ? (dep === VL.D_COAL ? 'Kömür yatağı' : 'Demir yatağı') : ['Çayır', 'Nehir', 'Orman', 'Dağ'][t];
@@ -459,7 +503,7 @@ function pair() {
 
 /* Plan: çizilen ama henüz yapılmamış iş. Ancak ✓ ile inşa edilir. */
 let plan = null, anchor = -1;
-const single = () => tool === 'gov' || !!VL.SVD[tool];
+const single = () => tool === 'gov' || (!!VL.SVD[tool] && !LINE[tool]);
 function tapBuild(t) {
   if (t < 0) return;
   if (single()) { setPlan(t, t); return; }
@@ -514,9 +558,20 @@ function confirmPlan() {
 function paintCells(a, b) {
   const N = G.N;
   if (a < 0 || b < 0) return [];
-  if (tool === 'gov' || tool === 'fountain') return [b];
+  if (single()) return [b];
   const ax = a % N, ay = (a / N) | 0, bx = b % N, by = (b / N) | 0, out = [];
-  if (tool === 'road') {
+  if (LINE[tool]) {
+    const dx = bx - ax, dy = by - ay, r = Math.abs(dy) / Math.max(1, Math.abs(dx));
+    if (dx && dy && r > 0.4 && r < 2.5) {        // çapraz: merdiven biçiminde kare kare (köşeler yuvarlak çizilir)
+      const sx = Math.sign(dx), sy = Math.sign(dy); let x = ax, y = ay;
+      out.push(y * N + x);
+      while (x !== bx || y !== by) {
+        const ex = Math.abs((x + sx - ax) * dy - (y - ay) * dx), ey = Math.abs((x - ax) * dy - (y + sy - ay) * dx);
+        if (x !== bx && (y === by || ex <= ey)) x += sx; else y += sy;
+        out.push(y * N + x);
+      }
+      return out;
+    }
     const hFirst = Math.abs(bx - ax) >= Math.abs(by - ay);
     const cx = hFirst ? bx : ax, cy = hFirst ? ay : by;
     const line = (x0, y0, x1, y1) => { const dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0); let x = x0, y = y0; for (;;) { const i = y * N + x; if (!out.includes(i)) out.push(i); if (x === x1 && y === y1) break; x += dx; y += dy; } };

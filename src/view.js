@@ -68,7 +68,7 @@ export function createView(canvas, G0) {
   const P = {
     tCone: pool(geo.cone, 9000), tBlob: pool(geo.blob, 4000), tTrunk: pool(geo.box, 13000),
     box: pool(geo.box, 9000), roof: pool(geo.roof, 6000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200),
-    agent: pool(geo.box, 300, false),
+    agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true),
   };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();
   const UP = new THREE.Vector3(0, 1, 0);
@@ -138,12 +138,19 @@ export function createView(canvas, G0) {
   function flatMesh(key, mat, build) {
     if (flat[key]) { world.remove(flat[key]); flat[key].geometry.dispose(); }
     const pos = [], col = [], uv = [];
+    // Serbest dörtgen (a,b,c,d çevre sırasıyla), yüzü yukarı bakacak şekilde
+    const quad4 = (ax, az, bx, bz, cx, cz, dx, dz, y, color) => {
+      if ((bz - az) * (cx - ax) - (bx - ax) * (cz - az) < 0) { [bx, bz, dx, dz] = [dx, dz, bx, bz]; }
+      pos.push(ax, y, az, bx, y, bz, cx, y, cz, ax, y, az, cx, y, cz, dx, y, dz);
+      for (let k = 0; k < 6; k++) col.push(color.r, color.g, color.b);
+      uv.push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
+    };
     build((x0, z0, x1, z1, y, color, u) => {
       pos.push(x0, y, z0, x0, y, z1, x1, y, z1, x0, y, z0, x1, y, z1, x1, y, z0);
       for (let k = 0; k < 6; k++) col.push(color.r, color.g, color.b);
       if (u) uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);    // döndürülmüş sıralar
       else uv.push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
-    });
+    }, quad4);
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -157,21 +164,58 @@ export function createView(canvas, G0) {
   const fieldTex = makeFieldTexture();
   const fieldMat = lam({ vertexColors: true, map: fieldTex, flatShading: false });
 
+  /* Şerit çizici: bir karedeki bağlantılara göre düz kollar ya da iki dik bağlantıda yuvarlak köşe.
+     DIRS: kuzey, doğu, güney, batı. offs: şeridin ekseninden kaymalar (raylar için ±). */
+  const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  function band(q, quad4, cx, cz, links, w, y, color, offs = [0]) {
+    const on = links.map(Boolean), n = on.filter(Boolean).length;
+    const corner = n === 2 && ((on[0] && on[1]) || (on[1] && on[2]) || (on[2] && on[3]) || (on[3] && on[0]));
+    if (corner) {
+      const p = [0, 1, 2, 3].find(k => on[k] && on[(k + 1) % 4]), A = DIRS[p], Bd = DIRS[(p + 1) % 4];
+      const ox = cx + (A[0] + Bd[0]) * 0.5, oz = cz + (A[1] + Bd[1]) * 0.5;      // köşe noktası
+      const t0 = Math.atan2(-Bd[1], -Bd[0]), t1 = Math.atan2(-A[1], -A[0]);
+      let d = t1 - t0; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI;
+      for (const o of offs) for (let k = 0; k < 8; k++) {
+        const u0 = t0 + d * k / 8, u1 = t0 + d * (k + 1) / 8, r0 = 0.5 + o - w, r1 = 0.5 + o + w;
+        quad4(ox + Math.cos(u0) * r0, oz + Math.sin(u0) * r0, ox + Math.cos(u0) * r1, oz + Math.sin(u0) * r1,
+          ox + Math.cos(u1) * r1, oz + Math.sin(u1) * r1, ox + Math.cos(u1) * r0, oz + Math.sin(u1) * r0, y, color);
+      }
+      return;
+    }
+    for (const o of offs) {
+      if (o === 0) {           // tek şerit: merkez kare ve bağlantı kolları
+        q(cx - w, cz - w, cx + w, cz + w, y, color);
+        if (on[0]) q(cx - w, cz - 0.5, cx + w, cz - w, y, color);
+        if (on[2]) q(cx - w, cz + w, cx + w, cz + 0.5, y, color);
+        if (on[3]) q(cx - 0.5, cz - w, cx - w, cz + w, y, color);
+        if (on[1]) q(cx + w, cz - w, cx + 0.5, cz + w, y, color);
+        continue;
+      }
+      // ray çifti: her eksende ayrı
+      const v = on[0] || on[2], h = on[1] || on[3] || !v;
+      if (v) q(cx + o - w, cz - (on[0] ? 0.5 : 0.22), cx + o + w, cz + (on[2] ? 0.5 : 0.22), y, color);
+      if (h) q(cx - (on[3] ? 0.5 : 0.22), cz + o - w, cx + (on[1] ? 0.5 : 0.22), cz + o + w, y, color);
+    }
+  }
+  function linksOf(arr, x, y, extEdge) {
+    const L = (nx, ny) => (nx >= 0 && ny >= 0 && nx < N && ny < N) ? !!arr[ny * N + nx] : extEdge && nx < 0;
+    return [L(x, y - 1), L(x + 1, y), L(x, y + 1), L(x - 1, y)];
+  }
   function buildRoads() {
-    const cc = new THREE.Color();
-    flatMesh('road', roadMat, (q) => {
+    const cc = new THREE.Color(), rail = new THREE.Color('#8e877b'), steel = new THREE.Color('#4b4846'), wood = new THREE.Color('#6b4b2e');
+    flatMesh('road', roadMat, (q, quad4) => {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const i = y * N + x; if (!G.r[i]) continue;
-        const onWater = G.t[i] === V.T_WATER, yy = onWater ? 0.05 : 0.014;
-        cc.set(onWater ? PAL.bridge : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
-        const cx = W(x), cz = W(y), w = 0.29;
-        q(cx - w, cz - w, cx + w, cz + w, yy, cc);
-        const link = (nx, ny) => nx >= 0 && ny >= 0 && nx < N && ny < N && G.r[ny * N + nx];
-        const edge = (nx, ny) => nx < 0 || ny < 0 || nx >= N || ny >= N;   // harita kenarına devam eder
-        if (link(x, y - 1) || (G.r[i] === 2 && edge(x, y - 1))) q(cx - w, cz - 0.5, cx + w, cz - w, yy, cc);
-        if (link(x, y + 1) || (G.r[i] === 2 && edge(x, y + 1))) q(cx - w, cz + w, cx + w, cz + 0.5, yy, cc);
-        if (link(x - 1, y) || (G.r[i] === 2 && edge(x - 1, y))) q(cx - 0.5, cz - w, cx - w, cz + w, yy, cc);
-        if (link(x + 1, y)) q(cx + w, cz - w, cx + 0.5, cz + w, yy, cc);
+        const i = y * N + x;
+        if (G.r[i]) {
+          const onWater = G.t[i] === V.T_WATER;
+          cc.set(onWater ? PAL.bridge : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
+          band(q, quad4, W(x), W(y), linksOf(G.r, x, y, G.r[i] === 2), 0.29, onWater ? 0.05 : 0.014, cc);
+        }
+        if (G.rl && G.rl[i]) {
+          const onWater = G.t[i] === V.T_WATER, L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = (onWater ? 0.07 : 0.022) + (G.r[i] ? 0.01 : 0);
+          band(q, quad4, W(x), W(y), L, 0.22, y0, onWater ? wood : rail);
+          band(q, quad4, W(x), W(y), L, 0.022, y0 + 0.012, steel, [-0.11, 0.11]);
+        }
       }
     });
   }
@@ -188,6 +232,13 @@ export function createView(canvas, G0) {
         q(x0 + 0.04, z0 + 0.04, x0 + 0.96, z0 + 0.96, 0.008, cc);
       }
     });
+    const ash = new THREE.Color('#3a332c'), wet = new THREE.Color('#3d7fc0');
+    flatMesh('marks', zoneMat, (q) => {
+      for (const k in G.mark || {}) {
+        const i = +k, x = i % N, y = (i / N) | 0, x0 = x - N / 2, z0 = y - N / 2;
+        q(x0 + 0.02, z0 + 0.02, x0 + 0.98, z0 + 0.98, 0.03, G.mark[k].k === 'burn' ? ash : wet);
+      }
+    }).renderOrder = 2;
     flatMesh('field', fieldMat, (q) => {
       for (let i = 0; i < N * N; i++) {
         if (G.z[i] !== V.Z_FARM || G.lv[i] === 0) continue;
@@ -204,7 +255,7 @@ export function createView(canvas, G0) {
     for (const k of ['tCone', 'tBlob', 'tTrunk']) P[k].count = 0;
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const i = y * N + x, t = G.t[i];
-      const used = G.r[i] || G.z[i] || G.sv[i];
+      const used = G.r[i] || (G.rl && G.rl[i]) || G.z[i] || G.sv[i];
       let n = 0;
       if (t === V.T_FOREST && !used) n = 3;
       else if (t === V.T_GRASS && !used && V.hash2(x, y, G.seed + 3) < 0.045) n = 1;
@@ -274,7 +325,7 @@ export function createView(canvas, G0) {
         put(P.cyl, cx, 0.42, cz, 0.18, 0.05, 0.18, 0, PAL.stone);
         continue;
       }
-      if (sv === V.S_SQUARE || sv === V.S_SITE || sv === V.S_LANDMARK) continue;   // 2×2 yapılar aşağıda
+      if (V.isMultiCode(sv)) continue;   // çok kareli yapılar aşağıda
       if (sv && sv !== V.S_GOV) { drawService(i, sv); continue; }
       if (!z || !lv) continue;
       const x = i % N, y = (i / N) | 0, cx = W(x), cz = W(y), r = V.hash2(x, y, G.seed + 1), r2 = V.hash2(y, x, 5);
@@ -355,6 +406,21 @@ export function createView(canvas, G0) {
     } else if (sv === V.S_QUARRY) {
       for (const [a, b, h] of [[-0.2, -0.15, 0.16], [0.05, -0.2, 0.22], [-0.1, 0.15, 0.12], [0.22, 0.12, 0.18]]) B_(a, 0, b, 0.2, h, 0.2, pick(PAL.rock, r + a));
       B_(0.3, 0, -0.3, 0.05, 0.8, 0.05, '#6d5134'); B_(0.15, 0.78, -0.3, 0.4, 0.04, 0.04, '#6d5134');
+    } else if (sv === V.S_SMALLSQ) {
+      put(P.box, cx, 0, cz, 0.96, 0.025, 0.96, 0, '#cdbf9e');
+      put(P.box, cx - 0.22, 0, cz - 0.22, 0.06, 0.18, 0.06, 0, PAL.trunk); put(P.blob || P.cone, cx - 0.22, 0.12, cz - 0.22, 0.4, 0.45, 0.4, 0, PAL.leaf[3]);
+      B_(0.1, 0.025, 0.25, 0.36, 0.07, 0.1, '#8a6845');
+      put(P.cyl, cx + 0.3, 0, cz - 0.3, 0.03, 0.5, 0.03, 0, '#3a3a3a'); put(P.box, cx + 0.3, 0.5, cz - 0.3, 0.08, 0.08, 0.08, 0, '#f2d27a');
+    } else if (sv === V.S_FIRE) {
+      B_(0, 0, 0.05, 0.74, 0.5, 0.6, '#9e3b2b'); B_(0, 0.5, 0.05, 0.8, 0.06, 0.66, '#3d3532');
+      B_(-0.24, 0, -0.2, 0.22, 1.0, 0.22, '#8e3527'); part(P.pyr, cx, cz, rot, -0.24, 1.0, -0.2, 0.3, 0.2, 0.3, '#3d3532');
+      B_(0.1, 0, 0.36, 0.34, 0.34, 0.02, '#4a2a20'); B_(-0.24, 0.8, -0.08, 0.1, 0.1, 0.02, '#e8c66a');
+    } else if (sv === V.S_MILL) {
+      part(P.cyl, cx, cz, rot, 0, 0, 0, 0.42, 0.72, 0.42, '#ece4d2'); part(P.cone, cx, cz, rot, 0, 0.72, 0, 0.5, 0.3, 0.5, '#6b4b3b');
+      B_(0, 0.72, 0.26, 0.07, 0.95, 0.03, '#8a6a42'); B_(0, 1.16, 0.26, 0.95, 0.07, 0.03, '#8a6a42');
+      B_(0, 0, 0.22, 0.14, 0.24, 0.02, '#4b3a2c');
+    } else if (sv === V.S_LEVEE) {
+      put(P.box, cx, 0, cz, 0.98, 0.2, 0.98, 0, '#7f8f55'); put(P.box, cx, 0.2, cz, 0.7, 0.06, 0.7, 0, '#8ea05f');
     } else if (sv === V.S_COAL || sv === V.S_IRON) {
       const pile = sv === V.S_COAL ? '#262524' : '#8a4b2e';
       B_(-0.2, 0, 0.12, 0.44, 0.3, 0.36, sv === V.S_COAL ? '#55504a' : '#6b5040'); R_(-0.2, 0.3, 0.12, 0.48, 0.14, 0.4, '#3a3532');
@@ -366,7 +432,7 @@ export function createView(canvas, G0) {
 
   /* 2×2 yapılar: meydan, şantiye, tamamlanmış görev anıtları */
   function drawMulti(m) {
-    const cx = m.x - N / 2 + 1, cz = m.y - N / 2 + 1;
+    const cx = m.x - N / 2 + (m.w || 2) / 2, cz = m.y - N / 2 + (m.h || 2) / 2;
     const Bx = (x, y, z, sx, sy, sz, c) => put(P.box, cx + x, y, cz + z, sx, sy, sz, 0, c);
     if (m.k === V.S_SQUARE) {
       Bx(0, 0, 0, 1.94, 0.03, 1.94, '#cdbf9e');
@@ -375,6 +441,37 @@ export function createView(canvas, G0) {
         put(P.box, cx + a, 0, cz + b, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.14, cz + b, 0.42, 0.6, 0.42, 0, PAL.leaf[1]);
       }
       for (const [a, b, w, d] of [[0, -0.42, 0.5, 0.1], [0, 0.42, 0.5, 0.1], [-0.42, 0, 0.1, 0.5], [0.42, 0, 0.1, 0.5]]) Bx(a, 0.03, b, w, 0.08, d, '#8a6845');
+      return;
+    }
+    if (m.k === V.S_BIGSQ) {
+      put(P.cyl, cx, 0, cz, 2.9, 0.03, 2.9, 0, '#cdbf9e');
+      put(P.cyl, cx, 0.03, cz, 2.0, 0.02, 2.0, 0, '#86b55e');
+      put(P.cyl, cx, 0.05, cz, 1.2, 0.03, 1.2, 0, '#d9cdb2');
+      put(P.cyl, cx, 0.05, cz, 0.95, 0.16, 0.95, 0, PAL.stone); put(P.cyl, cx, 0.08, cz, 0.8, 0.14, 0.8, 0, PAL.waterLit);
+      put(P.cyl, cx, 0.2, cz, 0.12, 0.6, 0.12, 0, PAL.stone); put(P.cyl, cx, 0.78, cz, 0.36, 0.06, 0.36, 0, PAL.stone);
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.39, x = cx + Math.cos(a) * 1.15, z = cz + Math.sin(a) * 1.15;
+        put(P.box, x, 0, z, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, x, 0.14, z, 0.36, 0.55, 0.36, 0, PAL.leaf[k % 5]); }
+      for (const [a, b] of [[1.3, 0], [-1.3, 0], [0, 1.3], [0, -1.3]]) { put(P.cyl, cx + a, 0, cz + b, 0.03, 0.55, 0.03, 0, '#3a3a3a'); put(P.box, cx + a, 0.55, cz + b, 0.09, 0.09, 0.09, 0, '#f2d27a'); }
+      return;
+    }
+    if (m.k === V.S_HIPPO) {
+      put(P.cyl, cx, 0, cz, 3.8, 0.04, 2.7, 0, '#a98861');
+      put(P.cyl, cx, 0.04, cz, 2.9, 0.02, 1.8, 0, '#7fae58');
+      for (const a of [-1, 1]) put(P.box, cx + a * 0.5, 0.06, cz, 0.04, 0.04, 1.2, 0, '#f4efe2');
+      Bx(0, 0, -1.3, 2.9, 0.36, 0.34, '#d8ccb0'); put(P.roof, cx, 0.36, cz - 1.3, 2.95, 0.22, 0.4, 0, '#7b3f2e');
+      for (let k = -1.2; k <= 1.2; k += 0.4) Bx(k, 0.36, -1.1, 0.04, 0.05, 0.08, k % 0.8 === 0 ? PAL.crimson : '#efe6d2');
+      for (const [a, b, c] of [[1.35, 0.6, '#5a3a24'], [1.1, 0.75, '#2e2a26'], [-1.4, -0.4, '#8a5a34']]) { Bx(a, 0.04, b, 0.22, 0.12, 0.07, c); Bx(a + 0.1, 0.1, b, 0.06, 0.1, 0.06, c); }
+      for (const a of [-1.7, 1.7]) { put(P.cyl, cx + a, 0, cz - 1.25, 0.03, 0.9, 0.03, 0, '#5b5b5b'); Bx(a + 0.12, 0.78, -1.25, 0.22, 0.12, 0.01, PAL.crimson); }
+      return;
+    }
+    if (m.k === V.S_BARRACKS) {
+      Bx(0, 0, 0, 2.94, 0.02, 1.94, '#b9a98a');
+      for (const [a, b, w, d] of [[0, -0.95, 2.94, 0.06], [0, 0.95, 2.94, 0.06], [-1.45, 0, 0.06, 1.94], [1.45, 0, 0.06, 1.94]]) Bx(a, 0, b, w, 0.3, d, '#c9b48a');
+      Bx(0, 0, -0.45, 2.1, 0.62, 0.7, '#cdb88f'); put(P.roof, cx, 0.62, cz - 0.45, 2.16, 0.26, 0.76, 0, '#6b4b3b');
+      for (let k = -0.8; k <= 0.8; k += 0.32) Bx(k, 0.25, -0.09, 0.1, 0.14, 0.02, '#5d7d95');
+      Bx(0, 0, 0.95, 0.4, 0.42, 0.1, '#8e7a58');
+      put(P.cyl, cx + 1.1, 0, cz + 0.5, 0.03, 1.3, 0.03, 0, '#5b5b5b'); Bx(1.25, 1.12, 0.5, 0.3, 0.18, 0.012, PAL.crimson);
+      for (let k = 0; k < 6; k++) Bx(-0.8 + k * 0.18, 0, 0.45, 0.05, 0.13, 0.05, '#3e4a5a');
       return;
     }
     if (m.k === V.S_SITE) {
@@ -462,7 +559,7 @@ export function createView(canvas, G0) {
   function setOverlay(kind) { overlay = kind; buildOverlay(); }
   function buildOverlay() {
     const c = V.cache(G), red = new THREE.Color('#ff3b1f');
-    const tint = new THREE.Color({ water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6' }[overlay] || '#2f8fe0');
+    const tint = new THREE.Color({ water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6', fire: '#e8562c', fun: '#d6b13a', flood: '#3fa36a', mill: '#d9c24a' }[overlay] || '#2f8fe0');
     flatMesh('ov', ovMat, (q) => {
       const cov = overlay && c[overlay]; if (!cov) return;
       for (let i = 0; i < N * N; i++) {
@@ -542,21 +639,60 @@ export function createView(canvas, G0) {
 
   /* ---------- güncelleme ---------- */
   let lastMonth = -1;
-  function syncAll() { N = G.N; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); }
+  /* Tren: istasyon ana hatta bağlıysa aralıklarla batıdan gelir, istasyonda bekler, geri döner */
+  let train = null;
+  function syncTrain() {
+    const c = V.cache(G);
+    if (!c.railOut || !G.railEntry) { train = null; P.train.count = 0; flush(P.train); return; }
+    const st = G.multi.find(m => m.k === V.S_LANDMARK && m.pid === 'rail');
+    const stTiles = new Set(V.multiTiles(G, st));
+    const start = G.railEntry.y * N + G.railEntry.x, prev = new Map([[start, -1]]), q = [start];
+    let end = -1;
+    while (q.length) { const i = q.shift(); if (V.neigh4(G, i).some(j => stTiles.has(j))) { end = i; break; } for (const j of V.neigh4(G, i)) if (G.rl[j] && !prev.has(j)) { prev.set(j, i); q.push(j); } }
+    if (end < 0) { train = null; return; }
+    const path = []; for (let k = end; k !== -1; k = prev.get(k)) path.unshift(k);
+    const pts = [];
+    for (let k = 6; k >= 1; k--) pts.push([W(-k), W(G.railEntry.y)]);     // haritanın dışından gelir
+    for (const i of path) pts.push([W(i % N), W((i / N) | 0)]);
+    train = { pts, s: 0, dir: 1, wait: 3, len: pts.length - 1 };
+  }
+  function at(t, s) { const k = Math.max(0, Math.min(t.len - 1e-6, s)), i = Math.floor(k), f = k - i, a = t.pts[i], b = t.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[0] - a[0], b[1] - a[1])]; }
+  function stepTrain(dt) {
+    if (!train) return;
+    const t = train;
+    if (t.wait > 0) t.wait -= dt;
+    else {
+      t.s += dt * 1.6 * t.dir;
+      if (t.dir > 0 && t.s >= t.len) { t.s = t.len; t.dir = -1; t.wait = 5; }          // istasyonda bekler
+      else if (t.dir < 0 && t.s <= 0) { t.s = 0; t.dir = 1; t.wait = 14; }             // hat dışında, sonraki sefer
+    }
+    P.train.count = 0;
+    const cols = ['#2b2b2b', '#7a3b2e', '#3e5b7a', '#6b6b3a'];
+    for (let k = 0; k < 4; k++) {
+      const [x, z, rot] = at(t, t.s - k * 0.62 * t.dir), yb = 0.05;
+      if (k === 0) { put(P.train, x, yb, z, 0.3, 0.26, 0.5, rot, cols[0]); put(P.train, x + Math.sin(rot) * 0.15 * t.dir, yb + 0.26, z + Math.cos(rot) * 0.15 * t.dir, 0.07, 0.14, 0.07, rot, '#1e1e1e'); }
+      else put(P.train, x, yb, z, 0.28, 0.24, 0.52, rot, cols[k]);
+    }
+    flush(P.train);
+  }
+
+  function syncAll() { N = G.N; lastTv = G.tv; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); }
+  let lastTv = -1;
   function syncDay() {      // her oyun günü: binalar ve tarlalar
+    if (G.tv !== lastTv) { lastTv = G.tv; buildTerrain(); buildTrees(); buildRoads(); syncTrain(); }
     buildBuildings();
     const m = V.dateOf(G).month;
     buildFlats(); if (m !== lastMonth) { lastMonth = m; syncAgents(); }
     if (overlay) buildOverlay();
   }
   function syncBuild() {    // oyuncu bir şey inşa ettiğinde
-    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents();
+    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain();
     buildGov();
   }
   let clock = 0;
   function frame(dt, running) {
     clock += dt;
-    if (running) stepAgents(dt * running);
+    if (running) { stepAgents(dt * running); stepTrain(dt * running); }
     if (govGroup) govGroup.traverse(o => { if (o.userData.flag) o.rotation.y = Math.sin(clock * 2.2) * 0.25; });
     water && (water.material.opacity = 0.8 + Math.sin(clock * 0.9) * 0.04);
     renderer.render(scene, camera);

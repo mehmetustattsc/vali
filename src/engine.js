@@ -3,7 +3,7 @@
    Önbellek (bağlantı, kapsama, toplamlar) G'nin dışında, WeakMap'te tutulur. */
 'use strict';
 
-const VERSION = 2;
+const VERSION = 3;
 const DAYS_PER_MONTH = 30;
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -13,7 +13,8 @@ const T_GRASS = 0, T_WATER = 1, T_FOREST = 2, T_ROCK = 3;
 const Z_NONE = 0, Z_RES = 1, Z_FARM = 2, Z_COM = 3;
 // Tekil binalar (G.sv). 9 = Valilik (eski kayıtlarla uyum için değişmez)
 const S_NONE = 0, S_FOUNTAIN = 1, S_POLICE = 2, S_SCHOOL = 3, S_CLINIC = 4, S_LUMBER = 5, S_QUARRY = 6, S_COAL = 7, S_IRON = 8,
-  S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12;
+  S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12, S_SMALLSQ = 13, S_BIGSQ = 14, S_HIPPO = 15, S_FIRE = 16, S_LEVEE = 17,
+  S_MILL = 18, S_BARRACKS = 19;
 // Maden yatakları (G.dep)
 const D_COAL = 1, D_IRON = 2;
 const RES = ['kereste', 'tas', 'komur', 'demir'];
@@ -23,8 +24,12 @@ const RES_NAME = { kereste: 'Kereste', tas: 'Taş', komur: 'Kömür', demir: 'De
    1850 dönemi için gerçeğe yakın oranlar: nüfusun ~%60'ı tarımla geçinir, kişi başı ayda 1 birim gıda. */
 const B = {
   startMoney: 4000,
-  cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3 },
-  upkeep: { road: 0.6, bridge: 3, gov: 12 },   // aylık
+  cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3, rail: 30, railBridge: 220, levee: 25 },
+  upkeep: { road: 0.6, bridge: 3, gov: 12, rail: 0.8, levee: 0.2 },   // aylık
+  millBoost: 0.45,                   // değirmenin çevresindeki tarlalarda verim artışı
+  barracks: { food: 40, coal: 8 },   // kışlanın aylık tüketimi
+  railPrice: 0.5,                    // demiryoluna bağlı üretimin satış fiyatına ek
+  regrow: 0.02,                      // ormanın yanındaki boş çayırın aylık ağaçlanma olasılığı (başlangıçtaki orman miktarına kadar)
   // İş sayıları "geçindirdiği kişi" cinsindendir (çalışan + ailesi): 1850'de hane başına yaklaşık iki kişi
   resCap: [0, 6, 14, 28],            // konut seviyesine göre kişi
   farmJobs: [0, 6, 11],              // tarla seviyesine göre çiftçi aile
@@ -47,7 +52,14 @@ const B = {
 /* Tekil binalar: maliyet, bakım, kapsama yarıçapı, iş, üretim */
 const SVD = {
   fountain: { code: S_FOUNTAIN, name: 'Çeşme', cost: 80, upkeep: 3, radius: 5, cover: 'water' },
-  square: { code: S_SQUARE, name: 'Meydan', cost: 260, upkeep: 4, radius: 6, cover: 'square', size: 2 },
+  smallsq: { code: S_SMALLSQ, name: 'Köşe meydanı', cost: 90, upkeep: 1.5, radius: 3, cover: 'square' },
+  square: { code: S_SQUARE, name: 'Meydan', cost: 260, upkeep: 4, radius: 6, cover: 'square', w: 2, h: 2 },
+  bigsq: { code: S_BIGSQ, name: 'Yuvarlak meydan', cost: 650, upkeep: 8, radius: 9, cover: 'square', w: 3, h: 3, minP: 300 },
+  fire: { code: S_FIRE, name: 'İtfaiye', cost: 300, upkeep: 9, radius: 8, cover: 'fire', jobs: 8 },
+  hippo: { code: S_HIPPO, name: 'Hipodrom', cost: 1800, upkeep: 26, radius: 16, cover: 'fun', jobs: 12, w: 4, h: 3, minP: 600 },
+  barracks: { code: S_BARRACKS, name: 'Kışla', cost: 2500, upkeep: 55, w: 3, h: 2, minP: 500 },
+  levee: { code: S_LEVEE, name: 'Set', cost: 25, radius: 2, cover: 'flood', line: true },
+  mill: { code: S_MILL, name: 'Değirmen', cost: 240, upkeep: 2, radius: 4, cover: 'mill', jobs: 4 },
   police: { code: S_POLICE, name: 'Karakol', cost: 320, upkeep: 10, radius: 8, cover: 'police', jobs: 8 },
   school: { code: S_SCHOOL, name: 'Mektep', cost: 380, upkeep: 12, radius: 7, cover: 'school', jobs: 8 },
   clinic: { code: S_CLINIC, name: 'Hekimhane', cost: 420, upkeep: 14, radius: 7, cover: 'clinic', jobs: 10 },
@@ -55,8 +67,10 @@ const SVD = {
   quarry: { code: S_QUARRY, name: 'Taş ocağı', cost: 220, jobs: 12, out: 'tas', rate: 32, need: 'rock' },
   coal: { code: S_COAL, name: 'Kömür ocağı', cost: 360, jobs: 14, out: 'komur', rate: 26, need: 'coal' },
   iron: { code: S_IRON, name: 'Demir madeni', cost: 420, jobs: 14, out: 'demir', rate: 20, need: 'iron' },
-  site: { code: S_SITE, name: 'Şantiye', cost: 0, size: 2 },
+  site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
+const dims = (d) => [d.w || 1, d.h || 1];
+const isMultiCode = (code) => code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK;
 const CODE2KEY = {}; for (const k in SVD) CODE2KEY[SVD[k].code] = k;
 
 /* On yıllık görevler: merkezden gelir, şehirden kaynak toplanıp şantiyeye taşınır */
@@ -114,11 +128,12 @@ function newGame(opts) {
     gov: null, multi: [], grp: { c: 0, i: 0 }, hap: { c: 60, i: 60 }, hf: { c: {}, i: {} },
     imm: 0, out: 0, born: 0, reg: B.regStart, food: { prod: 0, cons: 0, net: 0 },
     res: { kereste: 0, tas: 0, komur: 0, demir: 0 }, made: {}, sold: {},
-    proj: null, projNext: 0, done: [], itibar: 50, fx: {},
+    proj: null, projNext: 0, done: [], itibar: 50, fx: {}, rl: z(), mark: {}, opt: { disasters: true }, tv: 0, ev: null, risk: {},
     last: { inc: {}, exp: {}, net: 0 }, hist: [], flags: {}, msgs: [],
   };
   genRiverMap(G);
   genDeposits(G);
+  G.forest0 = G.t.filter(t => t === T_FOREST).length;
   return G;
 }
 
@@ -172,6 +187,14 @@ function upgradeSave(G) {
     Object.assign(G, { multi: [], res: { kereste: 0, tas: 0, komur: 0, demir: 0 }, made: {}, sold: {}, proj: null, projNext: 0, done: [], itibar: 50, fx: {} });
     G.v = 2;
   }
+  if (G.v === 2) {
+    Object.assign(G, { rl: new Array(G.N * G.N).fill(0), mark: {}, opt: { disasters: true }, tv: 0, ev: null, risk: {} });
+    const H = { N: G.N, seed: G.seed, t: new Array(G.N * G.N).fill(0), h: new Array(G.N * G.N).fill(0), r: new Array(G.N * G.N).fill(0) };
+    genRiverMap(H); G.forest0 = H.t.filter(t => t === T_FOREST).length;      // haritanın ilk ormanı
+    for (const m of G.multi) { m.w = m.w || 2; m.h = m.h || 2; }
+    if (G.fx.rail) addRailStub(G);
+    G.v = 3;
+  }
   return G;
 }
 
@@ -188,7 +211,8 @@ function rebuild(G) {
   const N = G.N, n = N * N;
   const U = () => new Uint8Array(n);
   const c = { dirty: false, net: U(), served: U(), water: U(), police: U(), school: U(), clinic: U(), square: U(), dirt: U(),
-    outside: false, roads: 0, bridges: 0, cnt: {}, svcJobs: 0, ind: [], zones: { 1: [], 2: [], 3: [] } };
+    fire: U(), fun: U(), flood: U(), mill: U(), rnet: U(), railOut: false, station: -1,
+    outside: false, roads: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, ind: [], zones: { 1: [], 2: [], 3: [] } };
   // Yol ağı: Valiliğe değen yollardan başlayan arama
   const q = [];
   if (G.gov) for (const i of govTiles(G)) for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); }
@@ -198,21 +222,40 @@ function rebuild(G) {
     if (!G.r[i] && G.t[i] !== T_WATER) for (const j of neigh4(G, i)) if (c.net[j]) { c.served[i] = 1; break; }
     if (G.z[i]) c.zones[G.z[i]].push(i);
   }
+  // Demiryolu ağı: istasyona (demiryolu anıtı) değen raylardan
+  const st = G.multi.find(m => m.k === S_LANDMARK && m.pid === 'rail');
+  if (st) {
+    const rq = [];
+    c.station = idx(G, st.x, st.y);
+    for (const i of multiTiles(G, st)) for (const j of neigh4(G, i)) if (G.rl[j] && !c.rnet[j]) { c.rnet[j] = 1; rq.push(j); }
+    while (rq.length) { const i = rq.pop(); if (G.rl[i] === 2) c.railOut = true; for (const j of neigh4(G, i)) if (G.rl[j] && !c.rnet[j]) { c.rnet[j] = 1; rq.push(j); } }
+  }
+  for (let i = 0; i < n; i++) if (G.rl[i] === 1) c.rails++;
   // Tekil binalar: kapsama, iş, üretim
-  for (let i = 0; i < n; i++) {
-    const code = G.sv[i]; if (!code || code === S_GOV) continue;
-    const key = CODE2KEY[code], d = SVD[key]; if (!d) continue;
-    if (d.size === 2 && !isAnchor(G, i)) continue;               // 2×2 yapılar bir kez sayılır
+  const unit = (key, i, ok, center) => {
+    const d = SVD[key];
     c.cnt[key] = (c.cnt[key] || 0) + 1;
-    const ok = d.size === 2 ? multiTiles(G, i).some(j => c.served[j]) : c.served[i];
-    if (d.cover) around(G, d.size === 2 ? i + G.N + 1 : i, d.radius, j => { c[d.cover][j] = 1; });
+    if (d.cover && d.radius) around(G, center, d.radius, j => { c[d.cover][j] = 1; });
     if (d.jobs && ok) c.svcJobs += d.jobs;
     if (d.out) {
       const f = ok ? resourceFactor(G, i, d.need) : 0;
-      c.ind.push({ i, key, f });
+      const rail = c.railOut && neigh8(G, i).some(j => c.rnet[j]);
+      c.ind.push({ i, key, f, rail });
       around(G, i, 3, j => { c.dirt[j] = 1; });                  // toz ve gürültü
     }
+  };
+  for (let i = 0; i < n; i++) {
+    const code = G.sv[i]; if (!code || code === S_GOV || isMultiCode(code)) continue;
+    const key = CODE2KEY[code]; if (!key) continue;
+    if (code === S_LEVEE) { c.levees++; around(G, i, 2, j => { c.flood[j] = 1; }); continue; }
+    unit(key, i, c.served[i], i);
   }
+  for (const m of G.multi) {
+    const key = CODE2KEY[m.k]; if (!key || m.k === S_SITE) continue;
+    const tiles = multiTiles(G, m);
+    unit(key, tiles[0], tiles.some(j => c.served[j]), idx(G, m.x + (m.w >> 1), m.y + (m.h >> 1)));
+  }
+  if (c.cnt.barracks) c.police.fill(1);                          // ordu bütün haritada asayişi sağlar
   // Tamamlanmış su kemeri geniş bir alana su verir
   for (const m of G.multi) if (m.k === S_LANDMARK && m.pid === 'aqueduct') around(G, idx(G, m.x, m.y) + G.N + 1, 16, j => { c.water[j] = 1; });
   CACHE.set(G, c);
@@ -220,9 +263,9 @@ function rebuild(G) {
 }
 
 function govTiles(G) { if (!G.gov) return []; const { x, y } = G.gov; return [idx(G, x, y), idx(G, x + 1, y), idx(G, x, y + 1), idx(G, x + 1, y + 1)]; }
-function multiAt(G, i) { const x = i % G.N, y = (i / G.N) | 0; return G.multi.find(m => x >= m.x && x <= m.x + 1 && y >= m.y && y <= m.y + 1); }
-function isAnchor(G, i) { const m = multiAt(G, i); return !!m && idx(G, m.x, m.y) === i; }
-function multiTiles(G, i) { const x = i % G.N, y = (i / G.N) | 0; return [i, idx(G, x + 1, y), idx(G, x, y + 1), idx(G, x + 1, y + 1)]; }
+function multiAt(G, i) { const x = i % G.N, y = (i / G.N) | 0; return G.multi.find(m => x >= m.x && x < m.x + (m.w || 2) && y >= m.y && y < m.y + (m.h || 2)); }
+function multiTiles(G, m) { const r = []; for (let y = m.y; y < m.y + (m.h || 2); y++) for (let x = m.x; x < m.x + (m.w || 2); x++) r.push(idx(G, x, y)); return r; }
+function neigh8(G, i) { const r = []; around(G, i, 1, j => { if (j !== i) r.push(j); }); return r; }
 
 /* Üretim binasının çevresindeki kaynak: 0..1 */
 function resourceFactor(G, i, need) {
@@ -239,7 +282,7 @@ function resourceFactor(G, i, need) {
 /* Toplamlar her gün yeniden sayılır (4096 kare, ucuz) */
 function totals(G) {
   const c = cache(G), n = G.N * G.N;
-  let P = 0, cap = 0, farmJobs = 0, comJobs = 0, building = 0, cov = { water: 0, police: 0, school: 0, clinic: 0, square: 0, dirt: 0 };
+  let P = 0, cap = 0, farmJobs = 0, farmFood = 0, comJobs = 0, building = 0, cov = { water: 0, police: 0, school: 0, clinic: 0, square: 0, dirt: 0, fire: 0, fun: 0 };
   for (let i = 0; i < n; i++) {
     const z = G.z[i]; if (!z) continue;
     if (G.pg[i] < 1 && G.lv[i] > 0) { building++; }
@@ -248,7 +291,7 @@ function totals(G) {
       const p = G.pop[i]; P += p; cap += B.resCap[Math.max(0, done)];
       if (p) for (const k in cov) if (c[k][i]) cov[k] += p;
     }
-    else if (z === Z_FARM) farmJobs += B.farmJobs[Math.max(0, done)];
+    else if (z === Z_FARM) { const j = B.farmJobs[Math.max(0, done)]; farmJobs += j; farmFood += j * B.foodPerFarmer * (c.mill[i] ? 1 + B.millBoost : 1); }
     else if (z === Z_COM) comJobs += B.comJobs[Math.max(0, done)];
   }
   const govJobs = G.gov ? B.govJobs : 0, svcJobs = c.svcJobs, workJobs = comJobs + govJobs + svcJobs;
@@ -258,10 +301,12 @@ function totals(G) {
   const reg = c.outside ? G.reg : 0;
   const want = c.outside ? vf + vw + (avgHap(G) > 55 ? 3 : 0) : 0;     // gelmek isteyen
   const dRes = want - free;
-  const dFarm = Math.ceil((P + want) * B.foodPerPerson / B.foodPerFarmer + reg * 0.6) - farmJobs;
+  const yieldPP = farmJobs ? farmFood / farmJobs : B.foodPerFarmer;      // değirmenler kişi başı verimi artırır
+  const army = c.cnt.barracks ? B.barracks.food * c.cnt.barracks : 0;
+  const dFarm = Math.ceil(((P + want) * B.foodPerPerson + army + reg * 0.6 * B.foodPerFarmer) / yieldPP) - farmJobs;
   const dCom = P >= 20 ? Math.round((P + want) * B.comShare + reg * 0.4) - comJobs : -1;
   for (const k in cov) cov[k] = P ? cov[k] / P : 0;
-  return { P, cap, free, farmJobs, comJobs, govJobs, svcJobs, workJobs, vf, vw, uc, ui, want, dRes, dFarm, dCom, building, cov, watered: cov.water * P, reg, outside: c.outside };
+  return { P, cap, free, farmJobs, yieldPP, army, comJobs, govJobs, svcJobs, workJobs, vf, vw, uc, ui, want, dRes, dFarm, dCom, building, cov, watered: cov.water * P, reg, outside: c.outside };
 }
 
 function avgHap(G) { const P = G.grp.c + G.grp.i; return P ? (G.hap.c * G.grp.c + G.hap.i * G.grp.i) / P : (G.hap.c + G.hap.i) / 2; }
@@ -270,22 +315,25 @@ function avgHap(G) { const P = G.grp.c + G.grp.i; return P ? (G.hap.c * G.grp.c 
 const TOOLS = ['gov', 'road', 'res', 'farm', 'com', 'bulldoze', ...Object.keys(SVD)];
 
 const isLand = (t) => t === T_GRASS || t === T_FOREST;
-const freeTile = (G, i) => i >= 0 && isLand(G.t[i]) && !G.r[i] && !G.sv[i] && !(G.z[i] && G.lv[i] > 0);
+const freeTile = (G, i) => i >= 0 && isLand(G.t[i]) && !G.r[i] && !G.rl[i] && !G.sv[i] && !(G.z[i] && G.lv[i] > 0);
 
 /* Bir aracın verilen kareler için maliyeti ve geçerliliği (önizleme ve uygulama aynı kuralı kullanır) */
 function quote(G, tool, cells) {
   const res = { ok: [], bad: [], cost: 0, err: null };
   const d = SVD[tool];
-  if (tool === 'gov' || (d && d.size === 2)) {
+  if (tool === 'gov' || (d && (d.w > 1 || d.h > 1))) {
     if (tool === 'gov' && G.gov) { res.err = 'Valilik zaten kurulu'; return res; }
     if (tool !== 'gov' && !G.gov) { res.err = 'Önce Valilik binasını kur'; res.bad = cells.slice(0, 1); return res; }
     if (tool === 'site' && !(G.proj && !G.proj.site)) { res.err = G.proj ? 'Şantiye zaten kurulu' : 'Şu an görev yok'; res.bad = cells.slice(0, 1); return res; }
+    const [w, h] = tool === 'gov' ? [2, 2] : dims(d);
     const i = cells[0], x = i % G.N, y = (i / G.N) | 0;
-    for (const [a, b] of [[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]]) {
+    for (let b = y; b < y + h; b++) for (let a = x; a < x + w; a++) {
       const j = inMap(G, a, b) ? idx(G, a, b) : -1;
       if (j < 0 || !freeTile(G, j)) res.bad.push(j); else res.ok.push(j);
     }
-    if (res.bad.length) res.err = (tool === 'gov' ? 'Valilik' : d.name) + ' için 2×2 boş arazi gerekir';
+    const P = tool === 'gov' ? 0 : totals(G).P;
+    if (d && d.minP && P < d.minP) { res.err = `${d.name} için en az ${d.minP} nüfus gerekir`; res.bad = res.ok.concat(res.bad); res.ok = []; }
+    else if (res.bad.length) res.err = (tool === 'gov' ? 'Valilik' : d.name) + ` için ${w}×${h} boş arazi gerekir`;
     else res.cost = tool === 'gov' ? 0 : d.cost;
     return res;
   }
@@ -296,17 +344,21 @@ function quote(G, tool, cells) {
     if (tool === 'road') {
       if (G.r[i] || t === T_ROCK || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;   // boş alanın üstünden geçer, binayı yıkmaz
       else cost = t === T_WATER ? B.cost.bridge : t === T_FOREST ? B.cost.roadForest : B.cost.road;
+    } else if (tool === 'rail') {
+      if (!G.fx.rail) { ok = false; res.err = 'Demiryolu görevi bitince açılır'; }
+      else if (G.rl[i] || t === T_ROCK || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;     // yolla kesişebilir (hemzemin geçit)
+      else cost = t === T_WATER ? B.cost.railBridge : B.cost.rail;
     } else if (tool === 'res' || tool === 'farm' || tool === 'com') {
       const zt = tool === 'res' ? 1 : tool === 'farm' ? 2 : 3;
       if (!isLand(t) || G.r[i] || G.sv[i] || G.z[i] === zt) ok = false;
       else cost = t === T_FOREST ? B.cost.zoneForest : B.cost.zone;
     } else if (d) {
-      if (!isLand(t) || G.r[i] || G.sv[i] || G.z[i]) ok = false;
+      if (!isLand(t) || G.r[i] || G.rl[i] || G.sv[i] || (G.z[i] && (d.line ? G.lv[i] > 0 : true))) ok = false;
       else if (d.need && !resourceFactor(G, i, d.need)) { ok = false; res.err = needText(d.need); }
       else cost = d.cost;
     } else if (tool === 'bulldoze') {
       const s = G.sv[i];
-      if (G.r[i] === 2 || s === S_GOV || s === S_SITE || s === S_LANDMARK || !(G.r[i] || G.z[i] || s)) ok = false; else cost = B.cost.bulldoze;
+      if (G.r[i] === 2 || G.rl[i] === 2 || s === S_GOV || s === S_SITE || s === S_LANDMARK || !(G.r[i] || G.rl[i] || G.z[i] || s)) ok = false; else cost = B.cost.bulldoze;
     } else ok = false;
     if (ok) { res.ok.push(i); res.cost += cost; } else res.bad.push(i);
   }
@@ -320,7 +372,7 @@ function needText(need) {
 function apply(G, tool, cells) {
   const q = quote(G, tool, cells);
   const d = SVD[tool];
-  const whole = tool === 'gov' || (d && d.size === 2);
+  const whole = tool === 'gov' || (d && (d.w > 1 || d.h > 1));
   if (!q.ok.length || (whole && q.bad.length)) return { done: false, err: q.err || 'Buraya yapılamaz' };
   if (q.cost > G.money) return { done: false, err: 'Hazinede yeterli para yok' };
   G.money -= q.cost;
@@ -329,17 +381,19 @@ function apply(G, tool, cells) {
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = S_GOV; }
     msg(G, 'gov', 'Valilik kuruldu. Şimdi batıdaki dış yola bir yol bağla.');
   } else if (whole) {
-    const i = cells[0], m = { k: d.code, x: i % G.N, y: (i / G.N) | 0 };
+    const i = cells[0], [w, h] = dims(d), m = { k: d.code, x: i % G.N, y: (i / G.N) | 0, w, h };
     if (tool === 'site') { m.pid = PROJECTS[G.proj.i].id; G.proj.site = 1; msg(G, 'site', 'Şantiye kuruldu. Kaynaklar yol ağıyla her ay buraya taşınır.'); }
     G.multi.push(m);
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = d.code; }
   } else for (const i of q.ok) {
     if (tool === 'road') { clearTile(G, i); G.r[i] = 1; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
+    else if (tool === 'rail') { clearTile(G, i); G.rl[i] = 1; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (tool === 'res' || tool === 'farm' || tool === 'com') { clearTile(G, i); G.z[i] = tool === 'res' ? 1 : tool === 'farm' ? 2 : 3; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (d) { clearTile(G, i); G.sv[i] = d.code; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (tool === 'bulldoze') {
       if (G.r[i] === 1) G.r[i] = 0;
-      if (G.sv[i] === S_SQUARE) { const m = multiAt(G, i); if (m) { for (const j of multiTiles(G, idx(G, m.x, m.y))) G.sv[j] = 0; G.multi.splice(G.multi.indexOf(m), 1); } }
+      else if (G.rl[i] === 1) G.rl[i] = 0;
+      if (isMultiCode(G.sv[i])) { const m = multiAt(G, i); if (m) { for (const j of multiTiles(G, m)) G.sv[j] = 0; G.multi.splice(G.multi.indexOf(m), 1); } }
       else if (G.sv[i] && G.sv[i] !== S_GOV) G.sv[i] = 0;
       clearTile(G, i);
     }
@@ -474,16 +528,23 @@ function monthEnd(G) {
   const ec = Math.min(G.grp.c, T.farmJobs), ei = Math.min(G.grp.i, T.workJobs);
   const r = G.taxRate / 100;
   // Gıda
-  const prod = ec * B.foodPerFarmer, cons = P * B.foodPerPerson, net = prod - cons;
+  const prod = ec * T.yieldPP, cons = P * B.foodPerPerson + T.army, net = prod - cons;
   G.food = { prod: Math.round(prod), cons: Math.round(cons), net: Math.round(net) };
   // Kaynak üretimi: işçi bulunduğu ölçüde
   const staff = T.workJobs ? Math.min(1, G.grp.i / T.workJobs) : 0;
   const made = {}, sold = {};
   let sales = 0;
   const pm = (G.fx.rail ? 1.3 : 1);
-  for (const b of c.ind) { const d = SVD[b.key], k = d.out, a = d.rate * b.f * staff; made[k] = (made[k] || 0) + a; G.res[k] += a; }
+  const railMade = {};
+  for (const b of c.ind) { const d = SVD[b.key], k = d.out, a = d.rate * b.f * staff; made[k] = (made[k] || 0) + a; G.res[k] += a; if (b.rail) railMade[k] = (railMade[k] || 0) + a; }
+  if (c.cnt.barracks) { const need = B.barracks.coal * c.cnt.barracks; G.res.komur = Math.max(0, G.res.komur - need); }
   for (const k of RES) {
-    if (G.res[k] > B.stockCap) { const over = G.res[k] - B.stockCap; G.res[k] = B.stockCap; if (c.outside) { sold[k] = over; sales += over * B.price[k] * pm; } }
+    if (G.res[k] > B.stockCap) {
+      const over = G.res[k] - B.stockCap; G.res[k] = B.stockCap;
+      // Demiryoluna bağlı ocak ve madenlerin malı daha pahalıya satılır
+      const share = made[k] ? Math.min(1, (railMade[k] || 0) / made[k]) : 0;
+      if (c.outside || c.railOut) { sold[k] = over; sales += over * B.price[k] * pm * (1 + share * B.railPrice); }
+    }
   }
   for (const k of RES) { made[k] = Math.round(made[k] || 0); sold[k] = Math.round(sold[k] || 0); }
   G.made = made; G.sold = sold;
@@ -498,7 +559,7 @@ function monthEnd(G) {
   };
   const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0);
   const exp = {
-    roads: c.roads * B.upkeep.road,
+    roads: c.roads * B.upkeep.road + c.rails * B.upkeep.rail + c.levees * B.upkeep.levee,
     bridges: c.bridges * B.upkeep.bridge,
     gov: G.gov ? B.upkeep.gov : 0,
     services: svcUp,
@@ -507,7 +568,7 @@ function monthEnd(G) {
   const netMoney = sum(inc) - sum(exp);
   if (G.gov) G.money += netMoney;
   // Bölge talebi: memnun, itibarlı ve bağlantılı şehir çevresinde ün kazanır
-  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1));
+  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0));
   G.last = { inc, exp, net: netMoney };
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
   if (P > 0) {
@@ -529,6 +590,9 @@ function monthEnd(G) {
         edu: Math.round((cv.school * 6 - (1 - cv.school) * 8 * ramp(P, 200, 800)) * (g === 'i' ? 1 : 0.6)),
         square: Math.round(cv.square * 6) + (G.fx.tower ? 6 : 0) + (G.fx.quay ? 2 : 0),
         dirt: -Math.round(cv.dirt * 10),
+        fun: Math.round(cv.fun * 6),
+        army: c.cnt.barracks ? 3 : 0,
+        event: G.ev && G.day < G.ev.until ? -G.ev.hit : 0,
         gov: 3,
       };
       const target = clamp(Object.values(f).reduce((a, b) => a + b, 0), 0, 100);
@@ -537,6 +601,10 @@ function monthEnd(G) {
     }
   }
   projects(G, c);
+  regrow(G);
+  if (G.opt.disasters) disasters(G, T, c);
+  riskOf(G, T, c);
+  for (const k in G.mark) if (G.mark[k].until <= G.day) delete G.mark[k];
   G.hist.push({ m: G.day / DAYS_PER_MONTH | 0, P, money: Math.round(G.money), net: Math.round(netMoney), hap: Math.round(avgHap(G)) });
   if (G.hist.length > 240) G.hist.shift();
   // Uyarılar
@@ -567,10 +635,10 @@ function projects(G, c) {
   // Teslimat: şantiye yol ağına bağlıysa ambardan her ay taşınır
   if (P.site) {
     const m = G.multi.find(q => q.k === S_SITE);
-    const linked = m && multiTiles(G, idx(G, m.x, m.y)).some(j => c.served[j]);
+    const linked = m && multiTiles(G, m).some(j => c.served[j]);
     P.linked = linked ? 1 : 0;
     if (linked) for (const k in p.needs) {
-      const a = Math.min(G.res[k], p.needs[k] - P.got[k], B.deliverPerMonth);
+      const a = Math.min(G.res[k], p.needs[k] - P.got[k], B.deliverPerMonth * (c.railOut ? 2 : 1));
       if (a > 0) { G.res[k] -= a; P.got[k] += a; }
     }
     if (Object.keys(p.needs).every(k => P.got[k] >= p.needs[k] - 0.01)) return finishProject(G, m);
@@ -582,17 +650,103 @@ function projects(G, c) {
 }
 function finishProject(G, m) {
   const P = G.proj, p = PROJECTS[P.i];
-  if (m) { m.k = S_LANDMARK; for (const j of multiTiles(G, idx(G, m.x, m.y))) G.sv[j] = S_LANDMARK; }
+  if (m) { m.k = S_LANDMARK; for (const j of multiTiles(G, m)) G.sv[j] = S_LANDMARK; }
   const early = G.day < P.start + (P.due - P.start) / 2;
   G.itibar = clamp(G.itibar + (P.late ? 5 : 15) + (early ? 5 : 0), 0, 100);
   const half = P.late ? 0.5 : 1;
   G.fx[p.id] = 1;
-  if (p.id === 'rail') G.reg += 60 * half;
+  if (p.id === 'rail') { G.reg += 60 * half; addRailStub(G); }
   if (p.id === 'quay') G.reg += 30 * half;
   G.done.push({ id: p.id, year: yearOf(G), late: P.late });
   G.proj = null; G.projNext++;
   touch(G);
   msg(G, 'projDone', `${p.name} tamamlandı! ${p.reward}`);
+  if (p.id === 'rail') msg(G, 'rail', 'Ulaşım menüsünde Ray açıldı. İstasyondan batıdaki ana hatta ray döşe; trenler gelip gitmeye başlar, ocak ve madenler malını daha pahalıya satar.');
+}
+
+/* Batı kenarından gelen ana demiryolu hattı (dış yolun iki sıra güneyi) */
+function addRailStub(G) {
+  const N = G.N; let y = G.entry.y + 2;
+  for (const dy of [0, 1, -4, 2, 3]) { const yy = G.entry.y + 2 + dy; if (inMap(G, 0, yy) && [0, 1, 2, 3, 4].every(k => G.t[idx(G, k, yy)] !== T_WATER && !G.r[idx(G, k, yy)])) { y = yy; break; } }
+  for (let k = 0; k <= 4; k++) { const i = idx(G, k, y); clearTile(G, i); if (G.sv[i] && !isMultiCode(G.sv[i]) && G.sv[i] !== S_GOV) G.sv[i] = 0; G.t[i] = T_GRASS; G.h[i] = 0; G.rl[i] = 2; }
+  G.railEntry = { x: 0, y }; G.tv++;
+  touch(G);
+}
+
+/* ---------- orman yenilenmesi ---------- */
+function regrow(G) {
+  const N = G.N; let n = 0, have = 0;
+  for (let i = 0; i < N * N; i++) if (G.t[i] === T_FOREST) have++;
+  if (have >= (G.forest0 || 0)) return;                 // orman ilk hâlinden fazla büyümez
+  for (let i = 0; i < N * N; i++) {
+    if (G.t[i] !== T_GRASS || G.r[i] || G.rl[i] || G.sv[i] || G.z[i]) continue;
+    let f = 0; for (const j of neigh4(G, i)) if (G.t[j] === T_FOREST) f++;
+    if (f >= 2 && rng(G) < B.regrow * (f - 1)) { G.t[i] = T_FOREST; n++; }
+  }
+  if (n) { G.tv++; touch(G); }
+}
+
+/* ---------- afetler ve önlemler ----------
+   Yangın: itfaiye kapsamı dışındaki mahallelerde yayılır.  Sel: ilkbaharda nehir kenarında, setler korur.
+   Salgın: su ve hekimhane eksik kalabalık şehirlerde. Su kemeri riski yarıya indirir. */
+function riskOf(G, T, c) {
+  const P = T.P, near = floodTiles(G, c);
+  G.risk = {
+    fire: P < 60 ? 0 : clamp(Math.round((0.015 + P / 40000) * (1 - T.cov.fire * 0.85) * 1200), 0, 100),
+    flood: Math.min(100, near.exposed * 3),
+    plague: P < 120 ? 0 : clamp(Math.round(((1 - T.cov.water) * 0.03 + (1 - T.cov.clinic) * 0.025 * ramp(P, 200, 800)) * (G.fx.aqueduct ? 0.5 : 1) * 1200), 0, 100),
+  };
+}
+function floodTiles(G, c) {
+  const N = G.N, list = []; let exposed = 0;
+  for (let i = 0; i < N * N; i++) {
+    if (!(G.z[i] && G.lv[i] > 0)) continue;
+    let w = false; around(G, i, 2, j => { if (G.t[j] === T_WATER) w = true; });
+    if (w) { list.push(i); if (!c.flood[i]) exposed++; }
+  }
+  return { list, exposed };
+}
+function disasters(G, T, c, force) {
+  const P = T.P, m = dateOf(G).month;
+  const roll = (p) => force || rng(G) < p;
+  const hit = (k, h, months) => { G.ev = { k, hit: h, until: G.day + months * DAYS_PER_MONTH }; };
+  if ((force === 'fire' || !force) && P >= 60 && roll((0.015 + P / 40000) * (1 - T.cov.fire * 0.85))) {
+    const built = []; for (let i = 0; i < G.N * G.N; i++) if ((G.z[i] === Z_RES || G.z[i] === Z_COM) && G.lv[i] > 0) built.push(i);
+    if (built.length) {
+      const s = built[(rng(G) * built.length) | 0];
+      if (c.fire[s]) { G.lv[s] = Math.max(1, G.lv[s] - 1); G.pg[s] = 1; if (G.z[s] === Z_RES) G.pop[s] = Math.min(G.pop[s], B.resCap[G.lv[s]]); msg(G, 'fire', 'Bir evde yangın çıktı; itfaiye yayılmadan söndürdü.'); }
+      else {
+        const burn = [s], seen = new Set([s]), max = 3 + ((rng(G) * 5) | 0);
+        for (let k = 0; k < burn.length && burn.length < max; k++) for (const j of neigh8(G, burn[k])) if (!seen.has(j) && G.z[j] && G.lv[j] > 0 && G.z[j] !== Z_FARM && burn.length < max) { seen.add(j); burn.push(j); }
+        for (const i of burn) { const z = G.z[i]; clearTile(G, i); G.z[i] = z; G.mark[i] = { k: 'burn', until: G.day + 90 }; }
+        hit('fire', 6, 6);
+        msg(G, 'fire', `Büyük yangın! ${burn.length} bina yandı. İtfaiye kur: kapsadığı yerde yangın yayılmaz.`);
+      }
+      touch(G);
+    }
+  }
+  if ((force === 'flood' || (!force && m >= 2 && m <= 4)) && roll(0.07)) {
+    const { list } = floodTiles(G, c);
+    let n = 0;
+    for (const i of list) {
+      if (c.flood[i]) continue;
+      n++; G.mark[i] = { k: 'wet', until: G.day + 45 };
+      if (G.z[i] === Z_RES && G.lv[i] > 1) { G.lv[i]--; if (G.pop[i] > B.resCap[G.lv[i]]) evict(G, G.pop[i] - B.resCap[G.lv[i]], i); }
+      else if (G.z[i] === Z_COM && G.lv[i] > 1) G.lv[i]--;
+    }
+    if (n) { G.food.net -= n * 3; hit('flood', 4, 4); msg(G, 'flood', `Nehir taştı: ${n} kare sular altında kaldı. Nehir kenarına Set çek (Ulaşım menüsü).`); touch(G); }
+  }
+  const pp = ((1 - T.cov.water) * 0.03 + (1 - T.cov.clinic) * 0.025 * ramp(P, 200, 800)) * (G.fx.aqueduct ? 0.5 : 1);
+  if ((force === 'plague' || !force) && P >= 120 && roll(pp)) {
+    const k = Math.round(P * (0.03 + 0.05 * (1 - T.cov.clinic)));
+    for (let n = 0; n < k; n++) {
+      const homes = []; for (let i = 0; i < G.N * G.N; i++) if (G.pop[i] > 0) homes.push(i);
+      if (!homes.length) break;
+      evict(G, 1, homes[(rng(G) * homes.length) | 0]);
+    }
+    hit('plague', 8, 6);
+    msg(G, 'plague', `Salgın! ${k} kişi hayatını kaybetti ya da kenti terk etti. Temiz su ve hekimhane salgını önler.`);
+  }
 }
 function needsText(needs) { return Object.keys(needs).map(k => needs[k] + ' ' + RES_NAME[k].toLocaleLowerCase('tr')).join(', '); }
 
@@ -610,7 +764,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { VERSION, B, SVD, PROJECTS, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { VERSION, B, SVD, PROJECTS, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

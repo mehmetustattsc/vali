@@ -63,6 +63,9 @@ button:disabled{cursor:default}
 #flyout span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
 #flyout b{font-size:13px;font-weight:600} #flyout small{font-size:11px;color:var(--ink2)}
 #flyout button.on small{color:#4a3c22}
+#flyout.two{display:grid;grid-template-columns:1fr 1fr}
+#flyout button:disabled{opacity:.45}
+.bar i.hot::after{background:var(--neg)}
 .tool.t-svc .ico{color:#9fc3e8} .tool.t-ind .ico{color:#d9a27a}
 #projb .ico{color:var(--accent)}
 #projb.alert{box-shadow:inset 0 0 0 2px var(--accent)}

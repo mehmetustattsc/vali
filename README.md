@@ -25,6 +25,14 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - On yıllık görevler: 1851 Su kemeri, 1861 Demiryolu, 1871 Taş köprü ve rıhtım, 1881 Saat kulesi. Şantiye kurulur, kaynaklar yol ağıyla her ay taşınır; bitince anıt yükselir, ödül ve itibar gelir.
 - Eski kayıtlar yeni sürümde açılır (maden yatakları haritaya eklenir, ilk görev hemen başlar).
 
+## Sürüm 0.3
+- Yollar ve raylar köşelerde yuvarlak çizilir; yola çapraz sürüklenince merdiven biçiminde çapraz yol olur.
+- Ulaşım menüsü: Yol, Ray (demiryolu görevinden sonra), Set (sele karşı).
+- Meydanlar: Köşe meydanı (1×1), Meydan (2×2), Yuvarlak meydan (3×3, havuzlu). Hipodrom (4×3), Kışla (3×2, bütün haritada asayiş; yüksek gider, gıda ve kömür tüketir), İtfaiye, Değirmen (tarla verimini artırır).
+- Afetler (menüden kapatılabilir): yangın (itfaiye önler), ilkbahar seli (set önler), salgın (su, hekimhane ve su kemeri önler). Şehir panelinde risk göstergeleri.
+- Orman, haritanın ilk orman miktarına kadar kendini yeniler.
+- Demiryolu görevinden sonra batıda ana hat açılır; istasyon raylarla bağlanınca tren gelip gider, raya yakın ocak ve madenlerin malı %50'ye kadar pahalı satılır, şantiye teslimatı iki katına çıkar.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 
