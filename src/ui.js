@@ -242,7 +242,7 @@ function budgetHtml() {
   const v = (x) => x ? sgn(x) : '0';
   return `<p class="lead">Geçen ayın hesabı. Vergi oranını buradan değiştirebilirsin.</p>
   <h3>Gelir</h3>
-  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}
+  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}
   <h3>Gider</h3>
   ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
@@ -365,7 +365,10 @@ function tileInfo(i) {
   if (sv === VL.S_SITE || sv === VL.S_LANDMARK) {
     const m = VL.multiAt(G, i), p = m && VL.PROJECTS.find(q => q.id === m.pid);
     if (sv === VL.S_SITE) return { title: 'Şantiye · ' + (p ? p.name : ''), html: `${row('Yola bağlı', yes(G.proj && G.proj.linked))}<p class="note">İlerlemeyi Görev panelinde görebilirsin.</p>` };
-    return { title: p ? p.name : 'Anıt', html: `<p class="note">${p ? p.reward : ''}</p>` };
+    const L = m && VL.LANDMARK[m.pid];
+    if (!L) return { title: p ? p.name : 'Anıt', html: `<p class="note">${p ? p.reward : ''}</p>` };
+    const ok = VL.multiTiles(G, m).some(j => c.served[j]);
+    return { title: `${p.name} · ${L.name}`, html: `${row('Yola bağlı', yes(ok))}${row('Geçindirdiği kişi', ok ? L.jobs : 0)}${m.pid === 'tower' && ok ? row('Ziyaretçi geliri', '≈' + fmt(40 + G.reg * 0.15) + '/ay') : ''}<p class="note">${L.text}</p>${ok ? '' : '<p class="note neg">Çalışması için yola bağla.</p>'}` };
   }
   const key = VL.CODE2KEY[sv];
   if (key && VL.SVD[key]) {

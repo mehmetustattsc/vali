@@ -44,6 +44,8 @@ G.money = 1e6;
 for (let d = 0; d < 30 * 16; d++) { if (d % 30 === 0) { G.res.tas = 600; G.res.kereste = 600; } V.step(G); }
 assert(G.done.length === 1 && G.fx.aqueduct, 'su kemeri bitmeli: ' + JSON.stringify(G.proj));
 assert(G.sv[s2] === V.S_LANDMARK, 'anıt yerinde');
+// Anıt çalışır: iş verir ve sağlık kapsaması sağlar
+{ const c = V.cache(G); assert(c.svcJobs >= V.LANDMARK.aqueduct.jobs && c.clinic[s2], 'su idaresi iş ve sağlık vermeli'); }
 // Kayıt: eski sürüm taşınır
 const old = JSON.parse(V.serialize(G)); old.v = 1; delete old.dep; delete old.res; delete old.multi; delete old.proj; delete old.projNext; delete old.done; delete old.itibar; delete old.fx;
 const up = V.deserialize(JSON.stringify(old));
@@ -109,6 +111,7 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
   const path = []; for (let k = hitI; k !== -1 && k != null; k = prev.get(k)) path.push(k);
   const rr2 = V.apply(H, 'rail', path.filter(i => !H.rl[i])); assert(rr2.done, 'ray döşenmeli');
   assert(V.cache(H).railOut, 'istasyon ana hatta bağlı');
+  assert(V.cache(H).transit.some(Boolean) && V.cache(H).freight.some(Boolean), 'gar ulaşım ve yük kapsaması vermeli');
   // 0.4: yolcu ve yük istasyonu raya yanaşır, liman kıyıya, iskele suya
   const tryAll = (k) => { for (let i = 0; i < N2 * N2; i++) { const q = V.quote(H, k, [i]); if (q.ok.length && !q.bad.length) return V.apply(H, k, [i]).done; } return false; };
   assert(tryAll('pstation'), 'yolcu istasyonu');

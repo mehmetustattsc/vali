@@ -41,6 +41,9 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - Görevler zorlaştı: yaklaşık iki kat kaynak, hazine payı, daha kısa süre, şantiyeye ayda en çok 45 birim (demiryoluyla 90).
 - Büyük konut, tarla ya da ticaret alanı çizilince araya kendiliğinden sokak yerleşir: her iki sırada bir sokak ve ağa bağlanan bir ara yol. Menüden kapatılabilir.
 
+## Sürüm 0.4.1
+- Görev anıtları çalışır: Su idaresi (10 kişiye iş, çevresinde sağlık), Gar (16 kişiye iş, yolcu ve yük istasyonu gibi), Rıhtım (14 kişiye iş, hazır nehir limanı, iskeleyi açar), Saat kulesi (6 kişiye iş, geniş meydan etkisi, aylık ziyaretçi geliri). Çalışmaları için yola bağlı olmaları gerekir.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

@@ -77,6 +77,13 @@ const SVD = {
   site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
 const dims = (d) => [d.w || 1, d.h || 1];
+/* Biten görevlerin anıtları: iş ve işlev */
+const LANDMARK = {
+  aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
+  rail: { name: 'Gar', jobs: 16, text: 'Yolcu ve yük istasyonu gibi çalışır: çevresinde ulaşım kolaylaşır, yakındaki ocak ve madenler demiryoluyla satar.' },
+  quay: { name: 'Rıhtım', jobs: 14, text: 'Hazır bir nehir limanıdır: gıda ve kaynaklar daha kârlı satılır, iskele kurulabilir.' },
+  tower: { name: 'Saat kulesi', jobs: 6, text: 'Geniş bir alanda meydan etkisi verir; ziyaretçiler her ay hazineye gelir bırakır.' },
+};
 const isMultiCode = (code) => code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK ||
   code === S_PSTATION || code === S_FSTATION || code === S_PORT;
 const CODE2KEY = {}; for (const k in SVD) CODE2KEY[SVD[k].code] = k;
@@ -261,6 +268,18 @@ function rebuild(G) {
     const key = CODE2KEY[m.k]; if (!key || m.k === S_SITE) continue;
     const tiles = multiTiles(G, m);
     unit(key, tiles[0], tiles.some(j => c.served[j]), idx(G, m.x + (m.w >> 1), m.y + (m.h >> 1)));
+  }
+  // Görev anıtları da çalışır: iş verir ve şehre hizmet eder
+  c.tourism = 0;
+  for (const m of G.multi) {
+    if (m.k !== S_LANDMARK) continue;
+    const tiles = multiTiles(G, m), ok = tiles.some(j => c.served[j]), ctr = idx(G, m.x + 1, m.y + 1), L = LANDMARK[m.pid];
+    if (!L) continue;
+    if (ok) c.svcJobs += L.jobs;
+    if (m.pid === 'aqueduct') around(G, ctr, 9, j => { c.clinic[j] = 1; });                 // su idaresi: temiz su, sağlık
+    if (m.pid === 'rail') { around(G, ctr, 9, j => { c.transit[j] = 1; }); around(G, ctr, 8, j => { c.freight[j] = 1; }); }
+    if (m.pid === 'quay') c.cnt.port = (c.cnt.port || 0) + 1;                                 // hazır nehir limanı
+    if (m.pid === 'tower') { around(G, ctr, 10, j => { c.square[j] = 1; }); if (ok) c.tourism = 1; }
   }
   if (c.cnt.barracks) c.police.fill(1);                          // ordu bütün haritada asayişi sağlar
   // Raya ya da yük istasyonunun kapsamına yakın ocak ve madenler demiryoluyla satar
@@ -606,6 +625,7 @@ function monthEnd(G) {
     taxCom: Math.min(G.grp.i, T.comJobs) * B.comProfit * fill * r,
     trade: c.outside && net > 0 ? net * B.exportPrice * (c.cnt.port ? B.port.food : 1) : 0,
     sales,
+    tourism: c.tourism ? 40 + G.reg * 0.15 : 0,               // saat kulesine gelen ziyaretçiler
   };
   const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0);
   const exp = {
@@ -817,7 +837,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { VERSION, B, SVD, PROJECTS, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { VERSION, B, SVD, PROJECTS, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
