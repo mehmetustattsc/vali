@@ -294,7 +294,7 @@ function bindInput() {
         if (gesture && gesture.mode === 'pan' && !gesture.moved && pts.size === 1 && tile >= 0) {
           gesture.mode = 'paint'; anchor = -1; if (navigator.vibrate) navigator.vibrate(12); showDraft(tile, tile);
         }
-      }, 320);
+      }, 450);
     } else if (pts.size === 2) {
       if (gesture && gesture.timer) clearTimeout(gesture.timer);
       if (gesture && gesture.mode === 'paint') restorePlan();
