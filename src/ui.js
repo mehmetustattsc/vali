@@ -73,7 +73,7 @@ const TOOL_INFO = {
   smallsq: { name: 'Köşe meydanı', tip: 'Küçük, ucuz meydan: yakın çevresini güzelleştirir.' },
   bigsq: { name: 'Yuvarlak meydan', tip: '3×3 havuzlu meydan: geniş çevreyi mutlu eder. 300 nüfustan sonra.' },
   fire: { name: 'İtfaiye', tip: 'Kapsadığı yerde yangın yayılmaz, çoğu hemen söndürülür.' },
-  hippo: { name: 'Hipodrom', tip: '4×3 at yarışı pisti: geniş bir alanda eğlence. 600 nüfustan sonra.' },
+  hippo: { name: 'Hipodrom', tip: '4×3 at yarışı pisti: geniş bir alanda eğlence ve her ay bilet geliri; mayısta büyük yarış günü. 600 nüfustan sonra.' },
   barracks: { name: 'Kışla', tip: '3×2 kışla: bütün haritada asayiş. Gideri yüksek, ayda 40 gıda ve 8 kömür tüketir. 500 nüfustan sonra.' },
   mill: { name: 'Değirmen', tip: 'Çevresindeki tarlaların verimini artırır; daha az tarla yeter.' },
   pstation: { name: 'Yolcu istasyonu', tip: '2×1, raya bitişik: çevresinde ulaşım kolaylaşır, halk memnun olur, dükkânlara daha çok müşteri gelir.' },
@@ -242,7 +242,7 @@ function budgetHtml() {
   const v = (x) => x ? sgn(x) : '0';
   return `<p class="lead">Geçen ayın hesabı. Vergi oranını buradan değiştirebilirsin.</p>
   <h3>Gelir</h3>
-  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}
+  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom biletleri', v(i.tickets || 0))}
   <h3>Gider</h3>
   ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
@@ -379,6 +379,7 @@ function tileInfo(i) {
     if (d.jobs) h += row('Geçindirdiği kişi', d.jobs);
     if (key === 'pier') h += row('Aylık balık', VL.B.pierFood + ' gıda');
     if (key === 'mill') h += row('Tarla verimi', '+%' + Math.round(VL.B.millBoost * 100));
+    if (key === 'hippo') { const one = VL.hippoIncome(G, { hippos: served ? 1 : 0 }, VL.totals(G).P); h += row('Bilet geliri', '≈' + fmt(one) + '/ay') + row('Büyük yarış (Mayıs)', '≈' + fmt(one * VL.B.hippo.raceMul)); }
     if (d.upkeep) h += row('Aylık gider', fmt(d.upkeep));
     if (d.out) {
       const f = served ? VL.resourceFactor(G, i, d.need) : 0;

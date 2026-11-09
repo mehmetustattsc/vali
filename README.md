@@ -44,6 +44,9 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 ## Sürüm 0.4.1
 - Görev anıtları çalışır: Su idaresi (10 kişiye iş, çevresinde sağlık), Gar (16 kişiye iş, yolcu ve yük istasyonu gibi), Rıhtım (14 kişiye iş, hazır nehir limanı, iskeleyi açar), Saat kulesi (6 kişiye iş, geniş meydan etkisi, aylık ziyaretçi geliri). Çalışmaları için yola bağlı olmaları gerekir.
 
+## Sürüm 0.4.2
+- Hipodrom her ay bilet geliri getirir (nüfus ve bölge talebiyle artar, 600 nüfusta yaklaşık ayda 70–80); mayısta büyük yarış günü: o ay üç kat gelir ve iki ay boyunca ek memnuniyet.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

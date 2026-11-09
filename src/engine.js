@@ -30,6 +30,7 @@ const B = {
   pierFood: 20,                      // iskele başına aylık balık (gıda)
   port: { food: 1.4, res: 1.25, reg: 1 },   // nehir limanı: gıda ve kaynak satışında çarpan, bölge talebine aylık ek
   barracks: { food: 40, coal: 8 },   // kışlanın aylık tüketimi
+  hippo: { base: 25, perRoot: 1.6, perReg: 0.1, raceMonth: 5, raceMul: 3, raceHap: 4 },   // bilet geliri; mayıs sonunda büyük yarış (ay sonu hesabında tarih hazirana geçmiş olur)
   railPrice: 0.5,                    // demiryoluna bağlı üretimin satış fiyatına ek
   regrow: 0.02,                      // ormanın yanındaki boş çayırın aylık ağaçlanma olasılığı (başlangıçtaki orman miktarına kadar)
   // İş sayıları "geçindirdiği kişi" cinsindendir (çalışan + ailesi): 1850'de hane başına yaklaşık iki kişi
@@ -271,6 +272,7 @@ function rebuild(G) {
   }
   // Görev anıtları da çalışır: iş verir ve şehre hizmet eder
   c.tourism = 0;
+  c.hippos = G.multi.filter(m => m.k === S_HIPPO && multiTiles(G, m).some(j => c.served[j])).length;
   for (const m of G.multi) {
     if (m.k !== S_LANDMARK) continue;
     const tiles = multiTiles(G, m), ok = tiles.some(j => c.served[j]), ctr = idx(G, m.x + 1, m.y + 1), L = LANDMARK[m.pid];
@@ -433,6 +435,9 @@ function autoRoads(G, x0, y0, x1, y1) {
   }
   return [...new Set(out)];
 }
+
+/* Hipodromun aylık bilet geliri: şehir ve çevre büyüdükçe artar */
+function hippoIncome(G, c, P) { const h = B.hippo; return c.hippos ? c.hippos * (h.base + Math.sqrt(P) * h.perRoot + G.reg * h.perReg) : 0; }
 
 function needText(need) {
   return { forest: 'Oduncu için çevrede en az 3 kare orman gerekir', rock: 'Taş ocağı dağın dibine kurulur', coal: 'Kömür ocağı kömür yatağının (kara kayalar) yanına kurulur', iron: 'Demir madeni demir yatağının (pas renkli kayalar) yanına kurulur' }[need];
@@ -618,6 +623,7 @@ function monthEnd(G) {
   for (const k of RES) { made[k] = Math.round(made[k] || 0); sold[k] = Math.round(sold[k] || 0); }
   G.made = made; G.sold = sold;
   // Gelir
+  const race = c.hippos > 0 && dateOf(G).month === B.hippo.raceMonth;   // ayın sonunda tarih bir sonraki aya geçmiş olur
   const fill = T.comJobs ? Math.min(1, (P * (1 + 0.3 * T.cov.transit) + G.reg) / (T.comJobs * 4)) : 0;   // müşteri: şehir (istasyon yakınında daha çok) + bölge
   const inc = {
     taxC: ec * B.wage.c * r,
@@ -626,6 +632,7 @@ function monthEnd(G) {
     trade: c.outside && net > 0 ? net * B.exportPrice * (c.cnt.port ? B.port.food : 1) : 0,
     sales,
     tourism: c.tourism ? 40 + G.reg * 0.15 : 0,               // saat kulesine gelen ziyaretçiler
+    tickets: hippoIncome(G, c, P) * (race ? B.hippo.raceMul : 1),
   };
   const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0);
   const exp = {
@@ -634,6 +641,7 @@ function monthEnd(G) {
     gov: G.gov ? B.upkeep.gov : 0,
     services: svcUp,
   };
+  if (race) { G.raceUntil = G.day + 2 * DAYS_PER_MONTH; msg(G, 'race', `Büyük yarış günü! Hipodrom bu ay ${Math.round(inc.tickets)} bilet geliri getirdi, halk bayram ediyor.`); }
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   const netMoney = sum(inc) - sum(exp);
   if (G.gov) G.money += netMoney;
@@ -660,7 +668,7 @@ function monthEnd(G) {
         edu: Math.round((cv.school * 6 - (1 - cv.school) * 8 * ramp(P, 200, 800)) * (g === 'i' ? 1 : 0.6)),
         square: Math.round(cv.square * 6) + (G.fx.tower ? 6 : 0) + (G.fx.quay ? 2 : 0),
         dirt: -Math.round(cv.dirt * 10),
-        fun: Math.round(cv.fun * 6),
+        fun: Math.round(cv.fun * 6) + (G.raceUntil > G.day ? B.hippo.raceHap : 0),
         transit: Math.round(cv.transit * 5),
         army: c.cnt.barracks ? 3 : 0,
         event: G.ev && G.day < G.ev.until ? -G.ev.hit : 0,
@@ -837,7 +845,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { VERSION, B, SVD, PROJECTS, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

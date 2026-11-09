@@ -91,6 +91,16 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
   { let k = 0; for (let i = 0; i < N2 * N2 && k < 40; i++) if (H.t[i] === V.T_FOREST && !H.z[i] && V.neigh4(H, i).filter(j => H.t[j] === V.T_FOREST).length >= 2) { H.t[i] = V.T_GRASS; k++; } }   // ormanı kes
   const f0 = H.t.filter(t => t === V.T_FOREST).length; for (let d = 0; d < 30 * 12; d++) V.step(H);
   assert(H.t.filter(t => t === V.T_FOREST).length > f0, 'orman yenilenmeli');
+  // Hipodrom bilet geliri ve mayıs yarışı
+  { H.grp.i += 700; const keep = H.pop.slice(), kl = H.lv.slice(), kp = H.pg.slice();
+    for (const i of V.cache(H).zones[1]) { H.lv[i] = 3; H.pg[i] = 1; H.pop[i] = 28; } V.touch(H);
+    let hp = -1; for (let i = 0; i < N2 * N2 && hp < 0; i++) { const q = V.quote(H, 'hippo', [i]); if (q.ok.length === 12 && q.ok.some(j => V.cache(H).served[j])) hp = i; }
+    if (hp >= 0 && V.apply(H, 'hippo', [hp]).done) {
+      for (let d = 0; d < 30 * 13; d++) V.step(H);
+      assert(H.last.inc.tickets > 0, 'hipodrom bilet geliri'); assert(H.raceUntil > 0, 'yarış günü olmalı');
+      console.log('hipodrom bileti/ay', Math.round(H.last.inc.tickets));
+    } else assert(false, 'hipodrom kurulamadı');
+    H.grp.i -= 700; }
   // Kışla bütün haritada asayiş sağlar
   H.grp.i += 400; for (const i of resZ) H.pop[i] += 0;   // nüfus şartını zorla
   let bk = -1; for (let i = 0; i < N2 * N2 && bk < 0; i++) { const q = V.quote(H, 'barracks', [i]); if (q.ok.length === 6 && !q.bad.length) bk = i; }
