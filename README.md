@@ -47,6 +47,13 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 ## Sürüm 0.4.2
 - Hipodrom her ay bilet geliri getirir (nüfus ve bölge talebiyle artar, 600 nüfusta yaklaşık ayda 70–80); mayısta büyük yarış günü: o ay üç kat gelir ve iki ay boyunca ek memnuniyet.
 
+## Sürüm 0.5: Elektrik çağı (1890–1930) ve haritalar
+- Beş harita: nehir kenarı, geniş ova, dağlık, büyük göl, deniz kıyısı.
+- 1890'dan sonra: kömür santrali, su santrali, fabrika (gelir, kömür ve demir işler), tramvay durağı (1895), çöp alanı. Elektrik ve çöp şehir geneli kapasiteyle hesaplanır; şehir panelinde Altyapı bölümü.
+- Konaklar elektrik ve ulaşım varsa apartmana dönüşür (56 kişi). 1908'den sonra yollarda otomobil, tramvay durağı varsa tramvaylar.
+- Yeni görevler: 1891 Belediye elektrik santrali, 1901 Kanalizasyon, 1911 Darülfünun, 1921 Zafer anıtı.
+- Yol ile ray kesişince üst geçit.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 
