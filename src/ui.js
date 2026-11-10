@@ -90,7 +90,7 @@ const TOOL_INFO = {
   hydro: { name: 'Su santrali', tip: 'Kıyıya bitişik suya kurulur: 450 birim temiz elektrik, kömür istemez.' },
   factory: { name: 'Fabrika', tip: '2×2: 40 kişiye iş ve her ay gelir. Elektrik ister, ayda 8 kömür ve 8 demir işler.' },
   tram: { name: 'Tramvay durağı', tip: 'Çevresinde ulaşım sağlar. Apartmanlar için elektrikle birlikte ulaşım gerekir.' },
-  dump: { name: 'Çöp alanı', tip: '2×2: 700 kişinin çöpünü toplar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
+  dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250'ye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
   pier: { name: 'İskele', tip: 'Kıyıya bitişik suya kurulur: balıkçılık her ay gıda verir.' },
   site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
@@ -402,7 +402,7 @@ function tileInfo(i) {
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
     if (key === 'hydro') h += row('Elektrik', VL.B.power.hydro + ' birim');
     if (key === 'factory') h += row('Gelir', '≈' + VL.B.factory.income + '/ay') + row('Elektrik tüketimi', VL.B.power.factoryUse + ' birim');
-    if (key === 'dump') h += row('Kapasite', VL.B.dumpCap + ' kişi');
+    if (key === 'dump') h += row('Kapasite', fmt(VL.B.dumpCap * (up ? up.mul : 1)) + ' kişi');
     if (key === 'pier') h += row('Aylık balık', VL.B.pierFood + ' gıda');
     if (key === 'mill') h += row('Tarla verimi', '+%' + Math.round(VL.B.millBoost * 100));
     if (key === 'hippo') { const one = VL.hippoIncome(G, { hippos: served ? 1 : 0 }, VL.totals(G).P); h += row('Bilet geliri', '≈' + fmt(one) + '/ay') + row('Büyük yarış (Mayıs)', '≈' + fmt(one * VL.B.hippo.raceMul)); }
@@ -415,7 +415,7 @@ function tileInfo(i) {
       h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez. Raya ya da yük istasyonuna yakın olursa malı daha pahalıya satılır.</p>';
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
-    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">Üretim ×${up.nextMul} olur; daha çok işçi ister, gideri artar.</p>`;
+    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${key === 'dump' ? 'Kapasite' : 'Üretim'} ×${up.nextMul} olur; daha çok işçi ister, gideri artar.</p>`;
     return { title: d.name + (up && up.lv > 1 ? ' · seviye ' + up.lv : ''), html: h };
   }
   const mk = G.mark && G.mark[i];

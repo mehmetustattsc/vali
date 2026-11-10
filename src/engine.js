@@ -37,7 +37,7 @@ const B = {
   // İş sayıları "geçindirdiği kişi" cinsindendir (çalışan + ailesi): 1850'de hane başına yaklaşık iki kişi
   power: { plant: 900, hydro: 450, landmark: 1500, coal: 20, factoryUse: 150, tramUse: 30 },   // elektrik birimi yaklaşık bir kişinin tüketimi
   factory: { income: 220, coal: 8, iron: 8 },
-  dumpCap: 700,                      // bir çöp alanının hizmet ettiği kişi
+  dumpCap: 2500,                      // bir çöp alanının hizmet ettiği kişi
   resCap: [0, 6, 14, 28, 56],            // konut seviyesine göre kişi
   farmJobs: [0, 6, 11],              // tarla seviyesine göre çiftçi aile
   comJobs: [0, 7, 16, 30],           // ticaret seviyesine göre işçi aile
@@ -91,7 +91,7 @@ const SVD = {
 const dims = (d) => [d.w || 1, d.h || 1];
 /* Üretim tesislerinin seviyeleri: çıktı, iş ve yükseltme maliyeti (ilk kurulum maliyetinin katı) */
 const UP = { out: [0, 1, 1.75, 2.5], jobs: [0, 1, 1.4, 1.8], cost: [0, 0, 1.5, 2.5], max: 3 };
-const UPGRADABLE = ['lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory'];
+const UPGRADABLE = ['lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
