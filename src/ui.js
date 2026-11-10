@@ -86,7 +86,7 @@ const TOOL_INFO = {
   fstation: { name: 'Yük istasyonu', tip: '2×1, raya bitişik: kapsadığı ocak ve madenler malını demiryoluyla daha pahalıya satar.' },
   port: { name: 'Liman', tip: '2×2, su kıyısına: gıda ve kaynaklar daha pahalıya satılır, bölge talebi artar. İskeleyi açar. 250 nüfustan sonra.' },
   ranch: { name: 'Hayvan çiftliği', tip: '3×2, bir tarlanın yanına: ayda 480 gıda (yaklaşık 50 tarla karesi) ve 30 kişiye iş. 300 nüfustan sonra.' },
-  power: { name: 'Kömür santrali', tip: '2×2: 900 birim elektrik, ayda 30 kömür yakar. Çevresi kirlenir, mahallelerden uzak tut.' },
+  power: { name: 'Kömür santrali', tip: '2×2: 900 birim elektrik, ayda 20 kömür yakar. Çevresi kirlenir, mahallelerden uzak tut.' },
   hydro: { name: 'Su santrali', tip: 'Kıyıya bitişik suya kurulur: 450 birim temiz elektrik, kömür istemez.' },
   factory: { name: 'Fabrika', tip: '2×2: 40 kişiye iş ve her ay gelir. Elektrik ister, ayda 8 kömür ve 8 demir işler.' },
   tram: { name: 'Tramvay durağı', tip: 'Çevresinde ulaşım sağlar. Apartmanlar için elektrikle birlikte ulaşım gerekir.' },
@@ -313,7 +313,12 @@ function projHtml() {
     h += `<p class="lead">Sıradaki görev ${p.year}${VL.yearOf(G) >= p.year ? ' (şehir dış yola bağlanınca)' : ''}: <b>${p.name}</b>. ${p.desc}</p>`;
   } else h += '<p class="lead">Bu dönemin bütün görevleri bitti.</p>';
   h += `<h3>Ambar <span>itibar ${G.itibar}</span></h3>`;
-  for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}/ay</small>`);
+  const U = G.used || {}, Tw = VL.totals(G), staff = Tw.workJobs ? Math.min(1, G.grp.i / Tw.workJobs) : 0;
+  for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}</small>${U[k] ? `<small class="neg"> −${fmt(U[k])}</small>` : ''}<small>/ay</small>`);
+  h += row('İşçi doluluğu', '%' + Math.round(staff * 100), staff < 0.8 ? 'neg' : '');
+  if (staff < 0.8) h += '<p class="note neg">İş sayısı işçiden fazla: ocaklar, madenler ve fabrikalar tam kapasite çalışamıyor. Daha fazla konut aç.</p>';
+  if (U.fac) h += row('Hammaddesi olan fabrika', `${U.fed} / ${U.fac}`, U.fed < U.fac ? 'neg' : '');
+  h += '<p class="note">Kömürü santraller, fabrikalar ve kışla; demiri fabrikalar kullanır. Görev şantiyesinin payı her zaman önce ayrılır, fabrikalar kalanı işler.</p>';
   const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
   h += `<p class="note">Ambar her kaynaktan en çok ${VL.B.stockCap} birim tutar, fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
   if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.year + (d.late ? ' · geç' : ''))).join('');

@@ -35,7 +35,7 @@ const B = {
   railPrice: 0.5,                    // demiryoluna bağlı üretimin satış fiyatına ek
   regrow: 0.02,                      // ormanın yanındaki boş çayırın aylık ağaçlanma olasılığı (başlangıçtaki orman miktarına kadar)
   // İş sayıları "geçindirdiği kişi" cinsindendir (çalışan + ailesi): 1850'de hane başına yaklaşık iki kişi
-  power: { plant: 900, hydro: 450, landmark: 1500, coal: 30, factoryUse: 150, tramUse: 30 },   // elektrik birimi yaklaşık bir kişinin tüketimi
+  power: { plant: 900, hydro: 450, landmark: 1500, coal: 20, factoryUse: 150, tramUse: 30 },   // elektrik birimi yaklaşık bir kişinin tüketimi
   factory: { income: 220, coal: 8, iron: 8 },
   dumpCap: 700,                      // bir çöp alanının hizmet ettiği kişi
   resCap: [0, 6, 14, 28, 56],            // konut seviyesine göre kişi
@@ -84,8 +84,8 @@ const SVD = {
   clinic: { code: S_CLINIC, name: 'Hekimhane', cost: 420, upkeep: 14, radius: 7, cover: 'clinic', jobs: 10 },
   lumber: { code: S_LUMBER, name: 'Oduncu', cost: 150, jobs: 10, out: 'kereste', rate: 30, need: 'forest' },
   quarry: { code: S_QUARRY, name: 'Taş ocağı', cost: 220, jobs: 12, out: 'tas', rate: 32, need: 'rock' },
-  coal: { code: S_COAL, name: 'Kömür ocağı', cost: 360, jobs: 14, out: 'komur', rate: 26, need: 'coal' },
-  iron: { code: S_IRON, name: 'Demir madeni', cost: 420, jobs: 14, out: 'demir', rate: 20, need: 'iron' },
+  coal: { code: S_COAL, name: 'Kömür ocağı', cost: 360, jobs: 14, out: 'komur', rate: 32, need: 'coal' },
+  iron: { code: S_IRON, name: 'Demir madeni', cost: 420, jobs: 14, out: 'demir', rate: 28, need: 'iron' },
   site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
 const dims = (d) => [d.w || 1, d.h || 1];
@@ -698,6 +698,7 @@ function monthEnd(G) {
   const pm = (G.fx.rail ? 1.3 : 1) * (c.cnt.port ? B.port.res * (G.map === 'sea' ? 1.2 : 1) : 1);
   const railMade = {};
   for (const b of c.ind) { const d = SVD[b.key], k = d.out, a = d.rate * b.f * staff; made[k] = (made[k] || 0) + a; G.res[k] += a; if (b.rail) railMade[k] = (railMade[k] || 0) + a; }
+  const before = { komur: G.res.komur, demir: G.res.demir };
   if (c.cnt.barracks) { const need = B.barracks.coal * c.cnt.barracks; G.res.komur = Math.max(0, G.res.komur - need); }
   // Santraller kömür yakar; fabrikalar kömür ve demir işler
   const A = c.act || {};
@@ -707,12 +708,17 @@ function monthEnd(G) {
     if (!had && !G.flags.noCoal) msg(G, 'nocoal', 'Santrale kömür yetişmiyor, şehirde karartma var. Kömür üretimini artır.');
     G.flags.noCoal = had ? 0 : 1;
   } else G.flags.noCoal = 0;
-  let facInc = 0;
+  // Fabrikalar, görev şantiyesinin bu ay alacağı payı ambarda bırakır: önce görev, sonra fabrika
+  const pj = G.proj && G.proj.site ? PROJECTS[G.proj.i] : null;
+  const rsv = (k) => pj && pj.needs[k] ? Math.max(0, Math.min(pj.needs[k] - (G.proj.got[k] || 0), B.deliverPerMonth * (c.railOut ? 2 : 1))) : 0;
+  let facInc = 0, facFed = 0;
   for (let k = 0; k < (A.factory || 0); k++) {
-    const fed = G.res.komur >= B.factory.coal && G.res.demir >= B.factory.iron;
+    const fed = G.res.komur - rsv('komur') >= B.factory.coal && G.res.demir - rsv('demir') >= B.factory.iron;
+    if (fed) facFed++;
     if (fed) { G.res.komur -= B.factory.coal; G.res.demir -= B.factory.iron; }
     facInc += B.factory.income * staff * (0.3 + 0.7 * T.power) * (fed ? 1 : 0.4);
   }
+  G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: facFed, fac: A.factory || 0 };
   for (const k of RES) {
     if (G.res[k] > B.stockCap) {
       const over = G.res[k] - B.stockCap; G.res[k] = B.stockCap;
