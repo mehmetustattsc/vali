@@ -244,7 +244,7 @@ function renderPanel() {
   else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); }
   else if (panelKind === 'game') { head.textContent = 'Menü'; body.innerHTML = gameHtml(); bindGame(); }
   else if (panelKind === 'proj') { head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); }; }
-  else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; }
+  else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; const b = $('#gUp'); if (b) b.onclick = () => { const r = VL.upgrade(G, selected); if (!r.done) toast(r.err); else { view.syncBuild(); updateHud(true); renderPanel(); } }; }
 }
 
 function row(label, val, cls = '') { return `<div class="row ${cls}"><span>${label}</span><b>${val}</b></div>`; }
@@ -317,7 +317,7 @@ function projHtml() {
   for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}</small>${U[k] ? `<small class="neg"> −${fmt(U[k])}</small>` : ''}<small>/ay</small>`);
   h += row('İşçi doluluğu', '%' + Math.round(staff * 100), staff < 0.8 ? 'neg' : '');
   if (staff < 0.8) h += '<p class="note neg">İş sayısı işçiden fazla: ocaklar, madenler ve fabrikalar tam kapasite çalışamıyor. Daha fazla konut aç.</p>';
-  if (U.fac) h += row('Hammaddesi olan fabrika', `${U.fed} / ${U.fac}`, U.fed < U.fac ? 'neg' : '');
+  if (U.fac) h += row('Fabrikaların hammaddesi', '%' + Math.round(U.fed * 100), U.fed < 1 ? 'neg' : '');
   h += '<p class="note">Kömürü santraller, fabrikalar ve kışla; demiri fabrikalar kullanır. Görev şantiyesinin payı her zaman önce ayrılır, fabrikalar kalanı işler.</p>';
   const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
   h += `<p class="note">Ambar her kaynaktan en çok ${VL.B.stockCap} birim tutar, fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
@@ -393,9 +393,11 @@ function tileInfo(i) {
   if (key && VL.SVD[key]) {
     const d = VL.SVD[key];
     const served = (d.w || 1) > 1 || d.onWater ? true : c.served[i];
+    const up = VL.upInfo(G, i);
     let h = row('Yola bağlı', yes(served));
+    if (up) h += row('Seviye', up.lv + ' / ' + up.max) + (up.lv > 1 ? row('Üretim çarpanı', '×' + up.mul) : '');
     if (d.radius) h += row('Etki yarıçapı', d.radius + ' kare');
-    if (d.jobs) h += row('Geçindirdiği kişi', d.jobs);
+    if (d.jobs) h += row('Geçindirdiği kişi', Math.round(d.jobs * (up ? up.jmul : 1)));
     if (key === 'ranch') h += row('Aylık gıda', VL.B.ranchFood);
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
     if (key === 'hydro') h += row('Elektrik', VL.B.power.hydro + ' birim');
@@ -407,13 +409,14 @@ function tileInfo(i) {
     if (d.upkeep) h += row('Aylık gider', fmt(d.upkeep));
     if (d.out) {
       const f = served ? VL.resourceFactor(G, i, d.need) : 0;
-      h += row('Üretim', `≈${Math.round(d.rate * f)} ${VL.RES_NAME[d.out].toLocaleLowerCase('tr')}/ay`) + row('Ambarda', fmt(G.res[d.out]));
+      h += row('Üretim', `≈${Math.round(d.rate * f * (up ? up.mul : 1))} ${VL.RES_NAME[d.out].toLocaleLowerCase('tr')}/ay`) + row('Ambarda', fmt(G.res[d.out]));
       const rail = (c.ind.find(b => b.i === i) || {}).rail;
       h += row('Demiryoluyla satış', rail ? 'Var' : '<span class="neg">Yok</span>');
       h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez. Raya ya da yük istasyonuna yakın olursa malı daha pahalıya satılır.</p>';
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
-    return { title: d.name, html: h };
+    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">Üretim ×${up.nextMul} olur; daha çok işçi ister, gideri artar.</p>`;
+    return { title: d.name + (up && up.lv > 1 ? ' · seviye ' + up.lv : ''), html: h };
   }
   const mk = G.mark && G.mark[i];
   const markNote = mk ? `<p class="note neg">${mk.k === 'burn' ? 'Yangın yeri: binalar zamanla yeniden yapılır.' : 'Sel suları çekiliyor.'}</p>` : '';

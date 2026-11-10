@@ -75,6 +75,7 @@ button:disabled{cursor:default}
 .bar b{font-variant-numeric:tabular-nums;font-weight:600}
 .row small{font-weight:500;font-size:11px;margin-left:4px}
 button.wide.primary{background:var(--accent);color:#2a2214}
+button.wide:disabled{opacity:.45}
 
 /* İpucu */
 #hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);max-width:min(560px,calc(100% - 180px));background:var(--bg);border-radius:12px;

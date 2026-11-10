@@ -89,6 +89,9 @@ const SVD = {
   site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
 const dims = (d) => [d.w || 1, d.h || 1];
+/* Üretim tesislerinin seviyeleri: çıktı, iş ve yükseltme maliyeti (ilk kurulum maliyetinin katı) */
+const UP = { out: [0, 1, 1.75, 2.5], jobs: [0, 1, 1.4, 1.8], cost: [0, 0, 1.5, 2.5], max: 3 };
+const UPGRADABLE = ['lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
@@ -319,17 +322,20 @@ function rebuild(G) {
   }
   for (let i = 0; i < n; i++) if (G.rl[i] === 1) c.rails++;
   // Tekil binalar: kapsama, iş, üretim
+  c.upExtra = 0;
   c.act = {};      // yola bağlı, çalışan santral, fabrika, durak ve çöp alanları
   const unit = (key, i, ok, center) => {
     const d = SVD[key];
     c.cnt[key] = (c.cnt[key] || 0) + 1;
     if (d.cover && d.radius) around(G, center, d.radius, j => { c[d.cover][j] = 1; });
-    if (d.jobs && ok) c.svcJobs += d.jobs;
+    const lv = lvOf(G, i), mul = UP.out[lv];
+    if (d.jobs && ok) c.svcJobs += Math.round(d.jobs * UP.jobs[lv]);
+    if (d.upkeep && lv > 1) c.upExtra += d.upkeep * (lv - 1);
     if (d.dirty) around(G, center, d.dirty, j => { c.dirt[j] = 1; });
-    if (d.year && ok) c.act[key] = (c.act[key] || 0) + 1;
+    if ((d.year || key === 'ranch') && ok) c.act[key] = (c.act[key] || 0) + mul;
     if (d.out) {
       const f = ok ? resourceFactor(G, i, d.need) : 0;
-      c.ind.push({ i, key, f, rail: false });
+      c.ind.push({ i, key, f: f * mul, rail: false });
       around(G, i, 3, j => { c.dirt[j] = 1; });                  // toz ve gürültü
     }
   };
@@ -411,7 +417,7 @@ function totals(G) {
   const dRes = want - free;
   const yieldPP = farmJobs ? farmFood / farmJobs : B.foodPerFarmer;      // değirmenler kişi başı verimi artırır
   const army = c.cnt.barracks ? B.barracks.food * c.cnt.barracks : 0;
-  const fish = (c.cnt.pier || 0) * B.pierFood + (c.cnt.ranch || 0) * B.ranchFood;      // balık ve hayvancılık
+  const fish = (c.cnt.pier || 0) * B.pierFood + ((c.act || {}).ranch || 0) * B.ranchFood;      // balık ve hayvancılık
   // Elektrik ve çöp (1890 sonrası): şehir geneli kapasite ve tüketim
   const yr = yearOf(G), A = c.act || {};
   const pcap = yr < 1890 ? 0 : (A.power || 0) * B.power.plant * (G.flags.noCoal ? 0.3 : 1) + (A.hydro || 0) * B.power.hydro + (A.lmPower ? B.power.landmark : 0);
@@ -525,6 +531,22 @@ function autoRoads(G, x0, y0, x1, y1) {
 /* Hipodromun aylık bilet geliri: şehir ve çevre büyüdükçe artar */
 function hippoIncome(G, c, P) { const h = B.hippo; return c.hippos ? c.hippos * (h.base + Math.sqrt(P) * h.perRoot + G.reg * h.perReg) : 0; }
 
+/* Seviye: tek kareli yapıda karenin, çok karelide sol üst karenin numarasıyla tutulur */
+function lvOf(G, i) { return (G.up && G.up[i]) || 1; }
+function upInfo(G, i) {
+  const m = isMultiCode(G.sv[i]) ? multiAt(G, i) : null, a = m ? idx(G, m.x, m.y) : i, key = CODE2KEY[G.sv[i]];
+  if (!key || !UPGRADABLE.includes(key)) return null;
+  const lv = lvOf(G, a), d = SVD[key];
+  return { key, anchor: a, lv, mul: UP.out[lv], jmul: UP.jobs[lv], cost: lv < UP.max ? Math.round(d.cost * UP.cost[lv + 1]) : 0, nextMul: UP.out[lv + 1], max: UP.max };
+}
+function upgrade(G, i) {
+  const u = upInfo(G, i);
+  if (!u || u.lv >= UP.max) return { done: false, err: 'Daha fazla yükseltilemez' };
+  if (G.money < u.cost) return { done: false, err: 'Hazinede yeterli para yok' };
+  G.money -= u.cost; G.up = G.up || {}; G.up[u.anchor] = u.lv + 1; touch(G);
+  return { done: true, cost: u.cost, lv: u.lv + 1 };
+}
+
 function needText(need) {
   return { forest: 'Oduncu için çevrede en az 3 kare orman gerekir', rock: 'Taş ocağı dağın dibine kurulur', coal: 'Kömür ocağı kömür yatağının (kara kayalar) yanına kurulur', iron: 'Demir madeni demir yatağının (pas renkli kayalar) yanına kurulur' }[need];
 }
@@ -553,7 +575,8 @@ function apply(G, tool, cells) {
     else if (tool === 'bulldoze') {
       if (G.r[i] === 1) G.r[i] = 0;
       else if (G.rl[i] === 1) G.rl[i] = 0;
-      if (isMultiCode(G.sv[i])) { const m = multiAt(G, i); if (m) { for (const j of multiTiles(G, m)) G.sv[j] = 0; G.multi.splice(G.multi.indexOf(m), 1); } }
+      if (G.up) delete G.up[i];
+      if (isMultiCode(G.sv[i])) { const m = multiAt(G, i); if (m) { if (G.up) delete G.up[idx(G, m.x, m.y)]; for (const j of multiTiles(G, m)) G.sv[j] = 0; G.multi.splice(G.multi.indexOf(m), 1); } }
       else if (G.sv[i] && G.sv[i] !== S_GOV) G.sv[i] = 0;
       clearTile(G, i);
     }
@@ -711,14 +734,12 @@ function monthEnd(G) {
   // Fabrikalar, görev şantiyesinin bu ay alacağı payı ambarda bırakır: önce görev, sonra fabrika
   const pj = G.proj && G.proj.site ? PROJECTS[G.proj.i] : null;
   const rsv = (k) => pj && pj.needs[k] ? Math.max(0, Math.min(pj.needs[k] - (G.proj.got[k] || 0), B.deliverPerMonth * (c.railOut ? 2 : 1))) : 0;
-  let facInc = 0, facFed = 0;
-  for (let k = 0; k < (A.factory || 0); k++) {
-    const fed = G.res.komur - rsv('komur') >= B.factory.coal && G.res.demir - rsv('demir') >= B.factory.iron;
-    if (fed) facFed++;
-    if (fed) { G.res.komur -= B.factory.coal; G.res.demir -= B.factory.iron; }
-    facInc += B.factory.income * staff * (0.3 + 0.7 * T.power) * (fed ? 1 : 0.4);
-  }
-  G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: facFed, fac: A.factory || 0 };
+  // Fabrikalar (seviyeye göre ağırlıklı birim): hammadde yettiği oranda tam gelir
+  const fu = A.factory || 0, needC = B.factory.coal * fu, needI = B.factory.iron * fu;
+  const frac = fu ? clamp(Math.min((G.res.komur - rsv('komur')) / needC, (G.res.demir - rsv('demir')) / needI), 0, 1) : 0;
+  G.res.komur -= needC * frac; G.res.demir -= needI * frac;
+  const facInc = B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
+  G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: frac, fac: fu };
   for (const k of RES) {
     if (G.res[k] > B.stockCap) {
       const over = G.res[k] - B.stockCap; G.res[k] = B.stockCap;
@@ -742,7 +763,7 @@ function monthEnd(G) {
     tickets: hippoIncome(G, c, P) * (race ? B.hippo.raceMul : 1),
     factory: facInc,
   };
-  const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0);
+  const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0) + c.upExtra;
   const exp = {
     roads: c.roads * B.upkeep.road + c.rails * B.upkeep.rail + c.levees * B.upkeep.levee,
     bridges: c.bridges * B.upkeep.bridge,
@@ -958,7 +979,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
