@@ -78,7 +78,7 @@ const TOOL_INFO = {
   mill: { name: 'Değirmen', tip: 'Çevresindeki tarlaların verimini artırır; daha az tarla yeter.' },
   pstation: { name: 'Yolcu istasyonu', tip: '2×1, raya bitişik: çevresinde ulaşım kolaylaşır, halk memnun olur, dükkânlara daha çok müşteri gelir.' },
   fstation: { name: 'Yük istasyonu', tip: '2×1, raya bitişik: kapsadığı ocak ve madenler malını demiryoluyla daha pahalıya satar.' },
-  port: { name: 'Nehir limanı', tip: '2×2, nehir kıyısına: gıda ve kaynaklar daha pahalıya satılır, bölge talebi artar. İskeleyi açar. 250 nüfustan sonra.' },
+  port: { name: 'Liman', tip: '2×2, su kıyısına: gıda ve kaynaklar daha pahalıya satılır, bölge talebi artar. İskeleyi açar. 250 nüfustan sonra.' },
   pier: { name: 'İskele', tip: 'Kıyıya bitişik suya kurulur: balıkçılık her ay gıda verir.' },
   site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
@@ -318,7 +318,7 @@ function openFlyout(g, btn) {
     const d = VL.SVD[k], railLock = (k === 'rail' || (d && d.needRail)) && !(G.fx && G.fx.rail), portLock = k === 'pier' && !VL.cache(G).cnt.port;
     const locked = railLock || portLock || (d && d.minP && P < d.minP);
     const cost = k === 'road' ? VL.B.cost.road + '/kare' : k === 'rail' ? VL.B.cost.rail + '/kare' : d.line ? d.cost + '/kare' : fmt(d.cost);
-    const sub = locked ? (railLock ? 'Demiryolu görevinden sonra' : portLock ? 'Önce nehir limanı' : d.minP + ' nüfustan sonra') : cost;
+    const sub = locked ? (railLock ? 'Demiryolu görevinden sonra' : portLock ? 'Önce liman' : d.minP + ' nüfustan sonra') : cost;
     return `<button data-tool="${k}" class="${k === tool ? 'on' : ''}" ${locked ? 'disabled' : ''}>${ico(k)}<span><b>${TOOL_INFO[k].name}</b><small>${sub}</small></span></button>`;
   }).join('');
   f.hidden = false;
@@ -626,7 +626,8 @@ function inspect(i) {
 /* ---------- ana menü ve yeni şehir ---------- */
 function showMenu(hasSave) {
   const m = $('#menu'); m.hidden = false;
-  const maps = [['river', 'Nehir kenarı', true], ['flat', 'Geniş ova'], ['mount', 'Dağlık'], ['lake', 'Büyük göl'], ['sea', 'Deniz kıyısı']];
+  const maps = [['river', 'Nehir kenarı', 'Dengeli başlangıç: su, orman ve maden bir arada.'], ['flat', 'Geniş ova', 'Verimli toprak (+%20 tarla verimi), bol yer. Taş ve maden yalnızca kuzeydoğudaki tepede.'], ['mount', 'Dağlık', 'Maden ve taş bol, düz arazi dar bir vadi. Toprak zayıf (−%10).'], ['lake', 'Büyük göl', 'Şehir gölün çevresine yayılır. Liman ve iskeleler için uzun kıyı.'], ['sea', 'Deniz kıyısı', 'Liman ticareti %20 daha kârlı. Sonbaharda fırtına kıyıyı vurur.']];
+  let mapSel = 'river';
   const years = [[1850, true], [1900], [1950], [2000], [2026]];
   m.innerHTML = `<div class="menu-card">
     <h1>Vali</h1><p class="sub">Şehrini 1850'den kur, büyüt, yönet.</p>
@@ -635,13 +636,14 @@ function showMenu(hasSave) {
       <button class="${hasSave ? '' : 'primary'}" id="mNew">Yeni şehir</button>
     </div>
     <div class="setup" hidden>
-      <h3>Harita</h3><div class="cards">${maps.map(([k, n, ok]) => `<button class="card ${ok ? 'on' : ''}" ${ok ? '' : 'disabled'} data-map="${k}"><i class="map-${k}"></i><span>${n}</span>${ok ? '' : '<em>Yakında</em>'}</button>`).join('')}</div>
+      <h3>Harita</h3><div class="cards">${maps.map(([k, n]) => `<button class="card ${k === mapSel ? 'on' : ''}" data-map="${k}"><i class="map-${k}"></i><span>${n}</span></button>`).join('')}</div><p class="note" id="mapNote">${maps[0][2]}</p>
       <h3>Başlangıç yılı</h3><div class="chips">${years.map(([y, ok]) => `<button class="chip ${ok ? 'on' : ''}" ${ok ? '' : 'disabled'}>${y}${ok ? '' : ' · yakında'}</button>`).join('')}</div>
       <button class="primary" id="mGo">Şehri kur</button>
     </div></div>`;
   if (hasSave) $('#mCont').onclick = () => { fullscreen(true); startGame(loadSave() || G); };
   $('#mNew').onclick = () => { m.querySelector('.setup').hidden = false; m.querySelector('.menu-actions').hidden = true; };
-  $('#mGo').onclick = () => { fullscreen(true); startGame(VL.newGame({ seed: (Date.now() % 9973) + 1 })); };
+  $('#mGo').onclick = () => { fullscreen(true); startGame(VL.newGame({ seed: (Date.now() % 9973) + 1, map: mapSel })); };
+  m.querySelector('.cards').onclick = (e) => { const b = e.target.closest('[data-map]'); if (!b) return; mapSel = b.dataset.map; m.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c === b)); $('#mapNote').textContent = maps.find(x => x[0] === mapSel)[2]; };
 }
 
 /* Tam ekran: tarayıcı sadece bir dokunuşla izin verir. Ana ekrana eklenmiş uygulama zaten tam ekran açılır. */
