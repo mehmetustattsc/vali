@@ -14,7 +14,7 @@ const Z_NONE = 0, Z_RES = 1, Z_FARM = 2, Z_COM = 3;
 // Tekil binalar (G.sv). 9 = Valilik (eski kayıtlarla uyum için değişmez)
 const S_NONE = 0, S_FOUNTAIN = 1, S_POLICE = 2, S_SCHOOL = 3, S_CLINIC = 4, S_LUMBER = 5, S_QUARRY = 6, S_COAL = 7, S_IRON = 8,
   S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12, S_SMALLSQ = 13, S_BIGSQ = 14, S_HIPPO = 15, S_FIRE = 16, S_LEVEE = 17,
-  S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28;
+  S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28, S_RANCH = 29;
 // Maden yatakları (G.dep)
 const D_COAL = 1, D_IRON = 2;
 const RES = ['kereste', 'tas', 'komur', 'demir'];
@@ -26,7 +26,8 @@ const B = {
   startMoney: 4000,
   cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3, rail: 30, railBridge: 220, levee: 25, overpass: 90 },
   upkeep: { road: 0.6, bridge: 3, gov: 12, rail: 0.8, levee: 0.2 },   // aylık
-  millBoost: 0.75,                   // değirmenin çevresindeki tarlalarda verim artışı
+  ranchFood: 480,                    // hayvan çiftliği: yaklaşık 50 tarla karesinin gıdası
+  millBoost: 3,                   // değirmenin çevresindeki tarlalarda verim artışı
   pierFood: 20,                      // iskele başına aylık balık (gıda)
   port: { food: 1.4, res: 1.25, reg: 1 },   // nehir limanı: gıda ve kaynak satışında çarpan, bölge talebine aylık ek
   barracks: { food: 40, coal: 8 },   // kışlanın aylık tüketimi
@@ -71,6 +72,7 @@ const SVD = {
   fstation: { code: S_FSTATION, name: 'Yük istasyonu', cost: 450, upkeep: 6, radius: 7, cover: 'freight', jobs: 10, w: 2, h: 1, needRail: true },
   port: { code: S_PORT, name: 'Liman', cost: 900, upkeep: 10, jobs: 14, w: 2, h: 2, minP: 250, needWater: true },
   pier: { code: S_PIER, name: 'İskele', cost: 120, upkeep: 1, jobs: 4, onWater: true },
+  ranch: { code: S_RANCH, name: 'Hayvan çiftliği', cost: 2500, upkeep: 15, jobs: 30, w: 3, h: 2, minP: 300, needFarm: true },
   // 1890 sonrası
   power: { code: S_POWER, name: 'Kömür santrali', cost: 1500, upkeep: 20, jobs: 14, w: 2, h: 2, year: 1890, dirty: 3 },
   hydro: { code: S_HYDRO, name: 'Su santrali', cost: 2200, upkeep: 10, jobs: 6, onWater: true, year: 1890 },
@@ -99,7 +101,7 @@ const LANDMARK = {
   tower: { name: 'Saat kulesi', jobs: 6, text: 'Geniş bir alanda meydan etkisi verir; ziyaretçiler her ay hazineye gelir bırakır.' },
 };
 const isMultiCode = (code) => code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK ||
-  code === S_PSTATION || code === S_FSTATION || code === S_PORT || code === S_POWER || code === S_FACTORY || code === S_DUMP;
+  code === S_PSTATION || code === S_FSTATION || code === S_PORT || code === S_POWER || code === S_FACTORY || code === S_DUMP || code === S_RANCH;
 const CODE2KEY = {}; for (const k in SVD) CODE2KEY[SVD[k].code] = k;
 
 /* On yıllık görevler: merkezden gelir, şehirden kaynak toplanıp şantiyeye taşınır */
@@ -409,7 +411,7 @@ function totals(G) {
   const dRes = want - free;
   const yieldPP = farmJobs ? farmFood / farmJobs : B.foodPerFarmer;      // değirmenler kişi başı verimi artırır
   const army = c.cnt.barracks ? B.barracks.food * c.cnt.barracks : 0;
-  const fish = (c.cnt.pier || 0) * B.pierFood;
+  const fish = (c.cnt.pier || 0) * B.pierFood + (c.cnt.ranch || 0) * B.ranchFood;      // balık ve hayvancılık
   // Elektrik ve çöp (1890 sonrası): şehir geneli kapasite ve tüketim
   const yr = yearOf(G), A = c.act || {};
   const pcap = yr < 1890 ? 0 : (A.power || 0) * B.power.plant * (G.flags.noCoal ? 0.3 : 1) + (A.hydro || 0) * B.power.hydro + (A.lmPower ? B.power.landmark : 0);
@@ -452,6 +454,7 @@ function quote(G, tool, cells) {
     else if (d && d.needRail && !G.fx.rail) { res.err = 'Demiryolu görevi bitince açılır'; res.bad = res.ok.concat(res.bad); res.ok = []; }
     else if (d && d.needRail && !res.bad.length && !edge.some(k => cc.rnet[k])) { res.err = `${d.name} istasyona bağlı bir rayın yanına kurulur`; res.bad = res.ok; res.ok = []; }
     else if (d && d.needWater && !res.bad.length && edge.filter(k => G.t[k] === T_WATER).length < 2) { res.err = 'Liman su kıyısına kurulur'; res.bad = res.ok; res.ok = []; }
+    else if (d && d.needFarm && !res.bad.length && !edge.some(k => G.z[k] === Z_FARM)) { res.err = d.name + ' bir tarlanın yanına kurulur'; res.bad = res.ok; res.ok = []; }
     else if (res.bad.length) res.err = (tool === 'gov' ? 'Valilik' : d.name) + ` için ${w}×${h} boş arazi gerekir`;
     else res.cost = tool === 'gov' ? 0 : d.cost;
     return res;
@@ -949,7 +952,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

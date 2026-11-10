@@ -47,6 +47,7 @@ const ICON = {
   pstation: '<path d="M3 20h18M5 20V10h14v10M3 10l9-5 9 5M9 14h2M13 14h2M8 20v-3h8v3"/>',
   fstation: '<path d="M3 20h18M4 20V9l8-4 8 4v11M7 20v-6h10v6M7 17h10"/>',
   port: '<path d="M2 19c2 0 2-1.5 4-1.5S8 19 10 19s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M5 15V8h8v7M13 15V4l6 3-6 3"/>',
+  ranch: '<path d="M3 20h18M3 20v-7l4-3 4 3v7M7 20v-4M13 20v-5h8v5M13 17h8M17 15v5"/>',
   power: '<path d="M13 2 5 13h6l-1 9 8-12h-6z"/>',
   hydro: '<path d="M3 8h18v4H3zM6 12v8M10 12v8M14 12v8M18 12v8M2 20c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1 2-1 4-1"/>',
   factory: '<path d="M3 21V11l5 3V11l5 3V11l5 3V5h3v16zM18 5V2"/>',
@@ -84,6 +85,7 @@ const TOOL_INFO = {
   pstation: { name: 'Yolcu istasyonu', tip: '2×1, raya bitişik: çevresinde ulaşım kolaylaşır, halk memnun olur, dükkânlara daha çok müşteri gelir.' },
   fstation: { name: 'Yük istasyonu', tip: '2×1, raya bitişik: kapsadığı ocak ve madenler malını demiryoluyla daha pahalıya satar.' },
   port: { name: 'Liman', tip: '2×2, su kıyısına: gıda ve kaynaklar daha pahalıya satılır, bölge talebi artar. İskeleyi açar. 250 nüfustan sonra.' },
+  ranch: { name: 'Hayvan çiftliği', tip: '3×2, bir tarlanın yanına: ayda 480 gıda (yaklaşık 50 tarla karesi) ve 30 kişiye iş. 300 nüfustan sonra.' },
   power: { name: 'Kömür santrali', tip: '2×2: 900 birim elektrik, ayda 30 kömür yakar. Çevresi kirlenir, mahallelerden uzak tut.' },
   hydro: { name: 'Su santrali', tip: 'Kıyıya bitişik suya kurulur: 450 birim temiz elektrik, kömür istemez.' },
   factory: { name: 'Fabrika', tip: '2×2: 40 kişiye iş ve her ay gelir. Elektrik ister, ayda 8 kömür ve 8 demir işler.' },
@@ -94,7 +96,7 @@ const TOOL_INFO = {
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
   svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
-const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks', 'tram', 'dump'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'power', 'hydro', 'factory'] };
+const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks', 'tram', 'dump'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'power', 'hydro', 'factory'] };
 const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
 const COVER = { tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
@@ -282,7 +284,7 @@ function cityHtml() {
   };
   const dem = (d) => d > 2 ? 'Yüksek' : d > 0 ? 'Var' : d > -6 ? 'Dengede' : 'Yok';
   return `${grp('c', 'Çiftçiler', T.farmJobs)}${grp('i', 'İşçiler', T.workJobs)}
-  <h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${row('Tüketim', fmt(G.food.cons))}${T.fish ? row('Bunun balıktan gelen kısmı', fmt(T.fish)) : ''}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}
+  <h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${row('Tüketim', fmt(G.food.cons))}${T.fish ? row('Balık ve hayvancılık', fmt(T.fish)) : ''}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}
   <h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}
   ${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
   ${T.yr >= 1890 ? '<h3>Altyapı</h3>' + row('Elektrik (üretim / tüketim)', fmt(T.pcap) + ' / ' + fmt(T.puse), T.power < 0.9 ? 'neg' : '') + row('Çöp toplama', '%' + Math.round(T.waste * 100), T.waste < 0.9 && T.yr >= 1900 ? 'neg' : '') : ''}
@@ -389,6 +391,7 @@ function tileInfo(i) {
     let h = row('Yola bağlı', yes(served));
     if (d.radius) h += row('Etki yarıçapı', d.radius + ' kare');
     if (d.jobs) h += row('Geçindirdiği kişi', d.jobs);
+    if (key === 'ranch') h += row('Aylık gıda', VL.B.ranchFood);
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
     if (key === 'hydro') h += row('Elektrik', VL.B.power.hydro + ' birim');
     if (key === 'factory') h += row('Gelir', '≈' + VL.B.factory.income + '/ay') + row('Elektrik tüketimi', VL.B.power.factoryUse + ' birim');
