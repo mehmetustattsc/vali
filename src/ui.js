@@ -90,7 +90,7 @@ const TOOL_INFO = {
   hydro: { name: 'Su santrali', tip: 'Kıyıya bitişik suya kurulur: 450 birim temiz elektrik, kömür istemez.' },
   factory: { name: 'Fabrika', tip: '2×2: 40 kişiye iş ve her ay gelir. Elektrik ister, ayda 8 kömür ve 8 demir işler.' },
   tram: { name: 'Tramvay durağı', tip: 'Çevresinde ulaşım sağlar. Apartmanlar için elektrikle birlikte ulaşım gerekir.' },
-  dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250'ye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
+  dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250 kişiye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
   pier: { name: 'İskele', tip: 'Kıyıya bitişik suya kurulur: balıkçılık her ay gıda verir.' },
   site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
@@ -254,7 +254,7 @@ function budgetHtml() {
   const v = (x) => x ? sgn(x) : '0';
   return `<p class="lead">Geçen ayın hesabı. Vergi oranını buradan değiştirebilirsin.</p>
   <h3>Gelir</h3>
-  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom biletleri', v(i.tickets || 0))}${row('Fabrika geliri', v(i.factory || 0))}
+  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Esnaf, eğitimli ve varlıklılardan', v((i.taxE || 0) + (i.taxO || 0) + (i.taxV || 0)))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom biletleri', v(i.tickets || 0))}${row('Fabrika geliri', v(i.factory || 0))}
   <h3>Gider</h3>
   ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
@@ -273,17 +273,24 @@ function bindBudget() {
 }
 
 const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', fun: 'Eğlence', transit: 'Ulaşım', power: 'Elektrik', waste: 'Çöp', army: 'Ordu', dirt: 'Maden tozu', event: 'Afet', gov: 'Valilik' };
+const GDESC = {
+  c: 'Tarlalarda çalışır.',
+  i: 'Ocak, maden, fabrika, liman ve hizmet binalarında çalışır.',
+  e: 'Dükkân ve çarşılarda çalışır. Asayişe ve ulaşıma önem verir.',
+  o: 'Valilik, mektep, hekimhane ve istasyonlarda çalışır. Mektebi olmayan şehre gelmez; eğitime ve meydanlara önem verir.',
+  v: 'Çalışmaz, en yüksek vergiyi öder. Meydan ya da eğlence yakınındaki temiz konak ve apartmanlara yerleşir; kirlilikten ve yüksek vergiden kaçar.',
+};
 function cityHtml() {
   const T = VL.totals(G);
   const grp = (g, name, jobs) => {
-    const n = G.grp[g], un = Math.max(0, n - jobs), f = G.hf[g] || {};
+    const n = G.grp[g] || 0, un = Math.max(0, n - jobs), f = G.hf[g] || {};
     const fs = Object.keys(FACTOR).filter(k => f[k] != null && k !== 'base').map(k => `<span class="chip ${f[k] < 0 ? 'neg' : f[k] > 0 ? 'pos' : ''}">${FACTOR[k]} ${f[k] > 0 ? '+' : ''}${f[k]}</span>`).join('');
-    return `<div class="grp"><div class="grp-h"><b>${name}</b><span>${fmt(n)} kişi</span><span class="mood">%${Math.round(G.hap[g])}</span></div>
-      ${row('Geçindiren iş', fmt(jobs))}${row('İşsiz', fmt(un), un > 0 ? 'neg' : '')}
+    return `<div class="grp"><div class="grp-h"><b>${name}</b><span>${fmt(n)} kişi</span><span class="mood">%${Math.round(G.hap[g] == null ? 60 : G.hap[g])}</span></div>
+      <p class="note small">${GDESC[g]}</p>${row(g === 'v' ? 'Uygun konak ve apartman yeri' : 'Geçindiren iş', fmt(jobs))}${row(g === 'v' ? 'Yersiz' : 'İşsiz', fmt(un), un > 0 ? 'neg' : '')}
       <div class="chips">${fs || '<span class="note">Ay sonunda hesaplanır</span>'}</div></div>`;
   };
   const dem = (d) => d > 2 ? 'Yüksek' : d > 0 ? 'Var' : d > -6 ? 'Dengede' : 'Yok';
-  return `${grp('c', 'Çiftçiler', T.farmJobs)}${grp('i', 'İşçiler', T.workJobs)}
+  return `${VL.GRP.filter(g => G.grp[g] || T.jobs[g]).map(g => grp(g, VL.GRP_NAME[g], T.jobs[g])).join('')}
   <h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${row('Tüketim', fmt(G.food.cons))}${T.fish ? row('Balık ve hayvancılık', fmt(T.fish)) : ''}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}
   <h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}
   ${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}

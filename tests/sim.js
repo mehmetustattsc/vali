@@ -57,7 +57,7 @@ function play(seed, years, log) {
     // Vergi ayarı: borçtaysa yükselt, rahatsa indir
     if (G.money < 500 && G.taxRate < 14) G.taxRate++; else if (G.money > 6000 && G.taxRate > 9) G.taxRate--;
     if ((m + 1) % 12 === 0) {
-      const row = { yil: V.dateOf(G).year - 1, nufus: T.P, ciftci: G.grp.c, isci: G.grp.i, issiz: T.uc + T.ui, konut: T.cap, hazine: Math.round(G.money), ayNet: Math.round(G.last.net), gida: G.food.net, mutlu: Math.round(V.avgHap(G)), vergi: G.taxRate, kaynak: V.RES.map(k => Math.round(G.res[k])).join('/'), gorev: G.proj ? V.PROJECTS[G.proj.i].id + (G.proj.site ? '+' : '') : '-', biten: G.done.length, itibar: G.itibar };
+      const row = { yil: V.dateOf(G).year - 1, nufus: T.P, ciftci: G.grp.c, isci: G.grp.i, esnaf: G.grp.e, egitimli: G.grp.o, varlikli: G.grp.v, issiz: T.unAll, konut: T.cap, hazine: Math.round(G.money), ayNet: Math.round(G.last.net), gida: G.food.net, mutlu: Math.round(V.avgHap(G)), vergi: G.taxRate, kaynak: V.RES.map(k => Math.round(G.res[k])).join('/'), gorev: G.proj ? V.PROJECTS[G.proj.i].id + (G.proj.site ? '+' : '') : '-', biten: G.done.length, itibar: G.itibar };
       rows.push(row);
     }
   }
