@@ -55,7 +55,7 @@ const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="
 const TOOL_INFO = {
   pan: { name: 'Gez', tip: 'Haritada gezin, bir yere dokunup bilgisini gör.' },
   gov: { name: 'Valilik', tip: 'Şehrin merkezi. 2×2 alan kaplar, bir kez kurulur.' },
-  road: { name: 'Yol', tip: 'Başlangıca, sonra bitişe dokun ya da basılı tutup sürükle. Nehirde köprü olur.' },
+  road: { name: 'Yol', tip: 'Başlangıca, sonra bitişe dokun ya da basılı tutup sürükle. Nehirde köprü, rayın üstünde üst geçit olur.' },
   res: { name: 'Konut', tip: 'İki köşeye dokun ya da basılı tutup sürükle. Evler talebe göre kendiliğinden yapılır.' },
   farm: { name: 'Tarla', tip: 'Tarla alanı: şehri besler, fazlası satılır.' },
   com: { name: 'Ticaret', tip: 'Dükkân ve atölyeler: işçilere iş, şehre ticaret vergisi.' },

@@ -207,16 +207,17 @@ export function createView(canvas, G0) {
     P.bridge.count = 0;
     flatMesh('road', roadMat, (q, quad4) => {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const i = y * N + x, onWater = G.t[i] === V.T_WATER;
+        const i = y * N + x, onWater = G.t[i] === V.T_WATER, over = !onWater && G.r[i] && G.rl && G.rl[i];   // ray üstünden üst geçit
         if (G.r[i]) {
-          cc.set(onWater ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
+          cc.set(onWater || over ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
           const L = linksOf(G.r, x, y, G.r[i] === 2);
-          band(q, quad4, W(x), W(y), L, 0.29, onWater ? DECK + 0.002 : 0.014, cc);
+          band(q, quad4, W(x), W(y), L, 0.29, onWater || over ? DECK + 0.002 : 0.014, cc);
           if (onWater) bridgeTile(x, y, L, 'stone');
+          else if (over) overpass(x, y, L);
           else rampTo(q, x, y, G.r, 0.29, 0.014, cc);
         }
         if (G.rl && G.rl[i]) {
-          const L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = onWater ? DECK + 0.012 : 0.022 + (G.r[i] ? 0.01 : 0);
+          const L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = onWater ? DECK + 0.012 : 0.022;
           band(q, quad4, W(x), W(y), L, 0.22, y0, onWater ? wood : rail);
           band(q, quad4, W(x), W(y), L, 0.022, y0 + 0.012, steel, [-0.11, 0.11]);
           if (onWater && !G.r[i]) bridgeTile(x, y, L, 'iron');
@@ -237,11 +238,19 @@ export function createView(canvas, G0) {
     }
     if ((x + y) % 2 === 0) put(P.bridge, cx, -0.42, cz, 0.24, DECK + 0.35, 0.6, along, kind === 'iron' ? '#7d7366' : stone);   // ayak
   }
-  /* Köprüye çıkan yolun karada kısa bir rampası olur */
+  /* Üst geçit: yol, rayın üstünden taş ayaklı bir köprüyle geçer; ray altından akar */
+  function overpass(x, y, L) {
+    const cx = W(x), cz = W(y), along = (L[1] || L[3]) && !(L[0] || L[2]) ? 0 : Math.PI / 2;
+    put(P.bridge, cx, DECK - 0.07, cz, 1.0, 0.07, 0.72, along, '#c2b69c');
+    for (const s of [-0.36, 0.36]) put(P.bridge, cx + Math.sin(along) * s, DECK, cz + Math.cos(along) * s, 1.0, 0.1, 0.05, along, '#8f8470');
+    for (const e of [-0.46, 0.46]) put(P.bridge, cx + Math.cos(along) * e, 0, cz - Math.sin(along) * e, 0.08, DECK - 0.07, 0.72, along, '#a89c84');   // yan ayaklar
+  }
+  const elevated = (j) => G.t[j] === V.T_WATER || (G.r[j] && G.rl && G.rl[j]);
+  /* Köprüye ve üst geçide çıkan yolun karada kısa bir rampası olur */
   function rampTo(q, x, y, arr, w, y0, cc) {
     for (const [dx, dy] of DIRS) {
       const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-      const j = ny * N + nx; if (!arr[j] || G.t[j] !== V.T_WATER) continue;
+      const j = ny * N + nx; if (!arr[j] || !elevated(j)) continue;
       const cx = W(x), cz = W(y);
       for (let k = 0; k < 4; k++) {    // basamaklı rampa: kenara doğru yükselir
         const a = 0.1 + k * 0.1, b = a + 0.1, yy = y0 + (DECK - y0) * (k + 1) / 5;
@@ -601,7 +610,7 @@ export function createView(canvas, G0) {
       }
       const ax = W(g.a % N), az = W((g.a / N) | 0), bx = W(g.b % N), bz = W((g.b / N) | 0);
       const dx = bx - ax, dz = bz - az, x = ax + dx * g.t + dz * 0.13 * g.side, z = az + dz * g.t - dx * 0.13 * g.side;
-      const wa = G.t[g.a] === V.T_WATER, wb = G.t[g.b] === V.T_WATER, onB = wa && wb ? DECK + 0.005 : wa || wb ? 0.015 + (DECK - 0.01) * (wa ? 1 - g.t : g.t) : 0.015;
+      const wa = elevated(g.a), wb = elevated(g.b), onB = wa && wb ? DECK + 0.005 : wa || wb ? 0.015 + (DECK - 0.01) * (wa ? 1 - g.t : g.t) : 0.015;
       const rot = Math.atan2(dx, dz);
       if (g.cart) { put(P.agent, x, onB, z, 0.12, 0.1, 0.2, rot, g.col); }
       else put(P.agent, x, onB, z, 0.045, 0.12, 0.045, rot, g.col);
