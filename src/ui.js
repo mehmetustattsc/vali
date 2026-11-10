@@ -582,7 +582,7 @@ function confirmPlan() {
   const { a, b } = plan, t = tool, q = planQuote(a, b);
   if (q.cost > G.money) { clearPlan(); toast('Hazinede yeterli para yok'); return; }
   if (q.roads.length) VL.apply(G, 'road', q.roads);
-  const skip = new Set(q.roads), r = VL.apply(G, t, paintCells(a, b).filter(i => !skip.has(i) && !G.r[i]));
+  const skip = new Set(q.roads), r = VL.apply(G, t, q.roads.length ? paintCells(a, b).filter(i => !skip.has(i)) : paintCells(a, b));
   clearPlan();
   if (!r.done) { toast(r.err); return; }
   view.syncBuild(); drainMessages();
