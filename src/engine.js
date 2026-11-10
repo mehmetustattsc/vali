@@ -383,7 +383,7 @@ function neigh8(G, i) { const r = []; around(G, i, 1, j => { if (j !== i) r.push
 /* Üretim binasının çevresindeki kaynak: 0..1 */
 function resourceFactor(G, i, need) {
   let k = 0;
-  if (need === 'forest') { around(G, i, 2, j => { if (j !== i && G.t[j] === T_FOREST) k++; });      // kendi karesi sayılmaz: kurulunca orman olmaktan çıkar return k >= 3 ? Math.min(1, k / 6) : 0; }
+  if (need === 'forest') { around(G, i, 2, j => { if (j !== i && G.t[j] === T_FOREST) k++; }); /* kendi karesi sayılmaz */ return k >= 3 ? Math.min(1, k / 6) : 0; }
   around(G, i, 1, j => {
     if (need === 'rock' && G.t[j] === T_ROCK) k++;
     if (need === 'coal' && G.dep[j] === D_COAL) k++;
