@@ -14,6 +14,7 @@ const ICON = {
   farm: '<path d="M3 20h18M4 20c1-4 3-7 8-7s7 3 8 7M8 13c0-3 1.8-5 4-5s4 2 4 5M12 8V4M12 4c-1.5 0-2.5-1-2.5-2M12 4c1.5 0 2.5-1 2.5-2"/>',
   com: '<path d="M3 9h18l-1.5-5h-15zM4 9v11h16V9M3 9c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3M10 20v-5h4v5"/>',
   fountain: '<path d="M4 17h16M6 17v3h12v-3M12 17V9M12 9c-3 0-5 2-5.5 4M12 9c3 0 5 2 5.5 4M9 6c0-2 1.3-3 3-3s3 1 3 3"/>',
+  buy: '<path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3zM9 4v13M15 7v13"/>',
   bulldoze: '<path d="M3 17h11l3-6h-6l-2 3H3zM7 20.5a1.5 1.5 0 1 0 0-.01M13 20.5a1.5 1.5 0 1 0 0-.01M17 11l4-6M19 3l3 3"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -103,6 +104,7 @@ const TOOL_INFO = {
   dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250 kişiye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
   pier: { name: 'İskele', tip: 'Kıyıya bitişik suya kurulur: balıkçılık her ay gıda verir.' },
   site: { name: 'Şantiye', tip: 'Görev için 2×2 şantiye. Yola bağlı olmalı; kaynaklar her ay buraya taşınır.' },
+  buy: { name: 'Arazi', tip: 'Koyu renkli alanlara dokun: o bölgeyi satın al. Her yeni arazi bir öncekinden pahalıdır.' },
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
   svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
@@ -177,7 +179,7 @@ function loadSave() { migrateLegacy(); const l = readIdx().sort((a, b) => b.t - 
 
 /* ---------- arayüz iskeleti ---------- */
 function buildChrome() {
-  $('#tools').innerHTML = ['pan', 'gov', 'way', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze'].map(k =>
+  $('#tools').innerHTML = ['pan', 'gov', 'way', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze', 'buy'].map(k =>
     `<button class="tool t-${k}" data-tool="${k}" aria-label="${TOOL_INFO[k].name}">${ico(k)}<span>${TOOL_INFO[k].name}</span></button>`).join('');
   $('#tools').addEventListener('click', e => {
     const b = e.target.closest('[data-tool]'); if (!b) return;
@@ -443,7 +445,7 @@ function tileInfo(i) {
     const up = VL.upInfo(G, i);
     let h = row('Yola bağlı', yes(served));
     if (up) h += row('Seviye', up.lv + ' / ' + up.max) + (up.lv > 1 ? row('Üretim çarpanı', '×' + up.mul) : '');
-    if (d.radius) h += row('Etki yarıçapı', d.radius + ' kare');
+    if (d.radius) h += row('Etki yarıçapı', Math.round(d.radius * VL.RADM[up ? up.lv : 1]) + ' kare');
     if (d.jobs) h += row('Geçindirdiği kişi', Math.round(d.jobs * (up ? up.jmul : 1)));
     if (key === 'ranch') h += row('Aylık gıda', VL.B.ranchFood);
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
@@ -463,7 +465,7 @@ function tileInfo(i) {
       h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez. Raya ya da yük istasyonuna yakın olursa malı daha pahalıya satılır.</p>';
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
-    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${key === 'dump' ? 'Kapasite' : 'Üretim'} ×${up.nextMul} olur; daha çok işçi ister, gideri artar.</p>`;
+    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${d.out || key === 'ranch' || key === 'power' || key === 'hydro' || key === 'gas' || key === 'factory' ? 'Üretim ×' + up.nextMul : key === 'dump' ? 'Kapasite ×' + up.nextMul : 'Etki yarıçapı ' + Math.round(d.radius * VL.RADM[up.lv + 1]) + ' kare'} olur; daha çok işçi ister, gideri artar.</p>`;
     return { title: d.name + (up && up.lv > 1 ? ' · seviye ' + up.lv : ''), html: h };
   }
   const mk = G.mark && G.mark[i];
@@ -597,7 +599,7 @@ function pair() {
 
 /* Plan: çizilen ama henüz yapılmamış iş. Ancak ✓ ile inşa edilir. */
 let plan = null, anchor = -1;
-const single = () => tool === 'gov' || (!!VL.SVD[tool] && !LINE[tool]);
+const single = () => tool === 'gov' || tool === 'buy' || (!!VL.SVD[tool] && !LINE[tool]);
 function tapBuild(t) {
   if (t < 0) return;
   if (single()) { setPlan(t, t); return; }

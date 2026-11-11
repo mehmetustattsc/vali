@@ -1,7 +1,7 @@
 /* Yeni özelliklerin işlevsel testi: üretim, hizmet kapsaması, görev akışı, eski kayıt taşıma. */
 const V = require('../src/engine.js');
 const assert = (c, m) => { if (!c) { console.error('HATA: ' + m); process.exit(1); } };
-const G = V.newGame({ seed: 11 });
+const G = V.newGame({ seed: 11 }); G.own.fill(1);
 const N = G.N, I = (x, y) => y * N + x, ry = G.entry.y;
 // Valilik ve dış yola bağlantı
 let gx = 12; const land = (x, y) => G.t[I(x, y)] === 0 || G.t[I(x, y)] === 2;
@@ -54,7 +54,7 @@ for (let d = 0; d < 60; d++) V.step(up);
 assert(up.proj, 'taşınan kayıtta görev başlamalı');
 // --- 0.3: büyük yapılar, afetler, orman, demiryolu ---
 {
-  const H = V.newGame({ seed: 5 }), N2 = H.N, J = (x, y) => y * N2 + x, ry2 = H.entry.y;
+  const H = V.newGame({ seed: 5 }); H.own.fill(1); const N2 = H.N, J = (x, y) => y * N2 + x, ry2 = H.entry.y;
   let g2 = 12; while (![[0, 0], [1, 0], [0, 1], [1, 1]].every(([a, b]) => H.t[J(g2 + a, ry2 - 2 + b)] === 0)) g2++;
   V.apply(H, 'gov', [J(g2, ry2 - 2)]); const rr = []; for (let x = 5; x < g2 + 14; x++) rr.push(J(x, ry2)); V.apply(H, 'road', rr);
   H.money = 1e6;
@@ -136,7 +136,16 @@ assert(up.proj, 'taşınan kayıtta görev başlamalı');
 // v2 kaydı v3'e taşınır
 {
   const o = JSON.parse(V.serialize(G)); o.v = 2; for (const k of ['rl', 'mark', 'opt', 'tv', 'ev', 'risk']) delete o[k];
-  const u = V.deserialize(JSON.stringify(o)); assert(u.v === 3 && Array.isArray(u.rl) && u.opt.disasters, 'v2 → v3');
+  const u = V.deserialize(JSON.stringify(o)); assert(u.v === V.VERSION && Array.isArray(u.rl) && u.opt.disasters, 'v2 → güncel');
   for (let d = 0; d < 40; d++) V.step(u);
 }
+// Arazi: başlangıçta orta sıra şehrin, gerisi satın alınır; eski 64'lük kayıt 96'ya büyür
+{ const L = V.newGame({ seed: 9 }), N3 = L.N; assert(N3 === 96 && L.own.filter(Boolean).length === 96 * 32, 'başlangıç arazisi');
+  L.gov = { x: 10, y: 40 }; L.money = 1e5; const q = V.quote(L, 'road', [5 * N3 + 5]); assert(!q.ok.length && /satın/.test(q.err), 'sahipsiz araziye yapılamaz');
+  const p0 = V.landPrice(L); assert(V.apply(L, 'buy', [5 * N3 + 5]).done && L.own[5 * N3 + 5] && V.landPrice(L) > p0, 'arazi satın alma');
+  const o = JSON.parse(V.serialize(G)); const S = 64, sm = (a) => { const r = []; for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) r.push(a[(y + 16) * 96 + x]); return r; };
+  const old = Object.assign({}, o, { v: 3, N: 64 }); for (const k of ['t', 'h', 'r', 'z', 'lv', 'pg', 'pop', 'sv', 'dep', 'rl']) old[k] = sm(o[k]); delete old.own; delete old.areas;
+  old.gov = { x: o.gov.x, y: o.gov.y - 16 }; old.multi = []; old.entry = { x: 0, y: o.entry.y - 16 }; delete old.railEntry;
+  const u = V.deserialize(JSON.stringify(old)); assert(u.N === 96 && u.v === V.VERSION && u.own.filter(Boolean).length === 64 * 64 && u.gov.y === o.gov.y, '64 → 96 taşıma');
+  for (let d = 0; d < 40; d++) V.step(u); }
 console.log('özellik testleri tamam · kömür', Math.round(G.res.komur), '· itibar', G.itibar);

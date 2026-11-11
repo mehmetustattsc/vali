@@ -139,7 +139,7 @@ async def main():
         await pg.mouse.move(380, 160); await pg.mouse.down(); await pg.mouse.move(520, 300, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(150)
         await shot('06k-diag'); await pg.click('#plan .no')
         # Büyük konut alanı: araya kendiliğinden sokak
-        await pg.evaluate('()=>{__vali.setTool("res"); const G=__vali.G(); let best=-1; for(let i=0;i<G.N*G.N;i++){ const x=i%G.N,y=(i/G.N)|0; if(x<8||y<8||x>40) continue; let ok=true; for(let b=0;b<8&&ok;b++) for(let a=0;a<8&&ok;a++){ const j=(y+b)*G.N+x+a; if(G.t[j]===1||G.t[j]===3||G.r[j]||G.sv[j]||G.z[j]||(G.rl&&G.rl[j])) ok=false; } if(ok){best=i;break;} } __vali.view().focus(best+4*G.N+4, 16); self.__area=best; }')
+        await pg.evaluate('()=>{__vali.setTool("res"); const G=__vali.G(); let best=-1; for(let i=0;i<G.N*G.N;i++){ const x=i%G.N,y=(i/G.N)|0; if(x<8||y<8||x>40) continue; let ok=true; for(let b=0;b<8&&ok;b++) for(let a=0;a<8&&ok;a++){ const j=(y+b)*G.N+x+a; if(G.t[j]===1||G.t[j]===3||G.r[j]||G.sv[j]||G.z[j]||(G.rl&&G.rl[j])||(G.own&&!G.own[j])) ok=false; } if(ok){best=i;break;} } __vali.view().focus(best+4*G.N+4, 16); self.__area=best; }')
         await pg.wait_for_timeout(200)
         pts = await pg.evaluate('()=>{const v=__vali.view(),G=__vali.G(),a=self.__area; const p=v.screenOf(a), q=v.screenOf(a+7*G.N+7); return [p.x,p.y,q.x,q.y]}')
         await pg.mouse.move(pts[0], pts[1]); await pg.mouse.down(); await pg.mouse.move(pts[2], pts[3], steps=10); await pg.mouse.up(); await pg.wait_for_timeout(150)
@@ -205,7 +205,7 @@ async def main():
         await pg.evaluate('(s)=>localStorage.setItem("vali.save.v1", s)', old)   # sayfa kapanırken yapılan kaydın üstüne
         await pg.click('#mCont'); await pg.wait_for_timeout(400)
         mig = await pg.evaluate('()=>{__vali.step(60); const G=__vali.G(); return {v:G.v, proj:!!G.proj, dep:G.dep.filter(Boolean).length}}')
-        print('eski kayıt', mig); assert mig['v'] == 3 and mig['proj'] and mig['dep'] > 0
+        print('eski kayıt', mig); assert mig['v'] >= 3 and mig['proj'] and mig['dep'] > 0
         # Dikey ekran uyarısı
         await pg.set_viewport_size({'width': 390, 'height': 844}); await pg.wait_for_timeout(200)
         assert await pg.is_visible('#rotate'), 'dikeyde yan çevir uyarısı'

@@ -3,7 +3,7 @@
    Önbellek (bağlantı, kapsama, toplamlar) G'nin dışında, WeakMap'te tutulur. */
 'use strict';
 
-const VERSION = 3;
+const VERSION = 4;
 const DAYS_PER_MONTH = 30;
 const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
@@ -107,7 +107,8 @@ const GW = {
   o: { edu: 1.6, tax: 1.2, square: 1.2, power: 1.3 },
   v: { tax: 1.6, safety: 1.5, square: 1.6, fun: 1.5, dirt: 2.5, edu: 1.2, power: 1.3 },
 };
-const UPGRADABLE = ['lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas'];
+const RADM = [0, 1, 1.35, 1.7];      // hizmet binalarında seviyeye göre etki yarıçapı
+const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
@@ -191,7 +192,7 @@ const yearOf = (G) => G.startYear + Math.floor(G.day / DAYS_PER_MONTH / 12);
 /* ---------- yeni oyun ---------- */
 function newGame(opts) {
   opts = opts || {};
-  const N = opts.N || 64, seed = opts.seed != null ? opts.seed : (Date.now() % 100000);
+  const N = opts.N || 96, seed = opts.seed != null ? opts.seed : (Date.now() % 100000);
   const n = N * N, z = () => new Array(n).fill(0);
   const G = {
     v: VERSION, seed, rs: seed * 7919 + 1, N, map: opts.map || 'river', startYear: opts.year || 1850,
@@ -204,6 +205,11 @@ function newGame(opts) {
     last: { inc: {}, exp: {}, net: 0 }, hist: [], flags: {}, msgs: [],
   };
   genMap(G);
+  // Arazi: 3×3 parsel (32×32); başlangıçta orta sıra şehrin, diğerleri satın alınır
+  const S = N / 3; G.areas = [];
+  for (let ay = 0; ay < 3; ay++) for (let ax = 0; ax < 3; ax++) G.areas.push({ x: ax * S, y: ay * S, w: S, h: S, own: ay === 1 ? 1 : 0 });
+  G.own = new Array(n).fill(0); for (const a of G.areas) if (a.own) markOwn(G, a);
+  G.bought = 0;
   genDeposits(G);
   G.forest0 = G.t.filter(t => t === T_FOREST).length;
   return G;
@@ -297,6 +303,55 @@ function genDeposits(G) {
   const n = Math.min(12, Math.max(4, Math.round(edge.length * 0.07)));
   pickTop(41, n, D_COAL);
   pickTop(53, Math.max(3, Math.round(n * 0.8)), D_IRON);
+  // Şehrin kendi arazisinden ulaşılabilen en az iki kömür ve iki demir yatağı olsun
+  if (G.own) for (const [code, k] of [[D_COAL, 41], [D_IRON, 53]]) {
+    const reach = (i) => neigh4(G, i).some(j => G.own[j] && (G.t[j] === T_GRASS || G.t[j] === T_FOREST));
+    let have = edge.filter(i => G.dep[i] === code && reach(i)).length;
+    for (const i of edge.filter(i => !G.dep[i] && reach(i)).sort((a, b) => score(b, k) - score(a, k))) { if (have >= 2) break; G.dep[i] = code; have++; }
+  }
+}
+function markOwn(G, a) { for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) G.own[idx(G, x, y)] = 1; }
+function areaAt(G, i) { const x = i % G.N, y = (i / G.N) | 0; return (G.areas || []).find(a => x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h); }
+function landPrice(G) { return Math.round(3000 * Math.pow(1.7, G.bought || 0) / 100) * 100; }
+
+/* Eski 64×64 kayıtları 96×96'ya genişletir: şehir batı kenarında ortalanır (y + 16),
+   çevresine yeni arazi eklenir: su ve dağ kenardan devam eder, ötesi yeni çayır, orman ve tepeler. */
+function enlarge(G) {
+  const oN = G.N, N = 96, oy = 16, n = N * N, s = G.seed;
+  const keys = ['t', 'h', 'r', 'z', 'lv', 'pg', 'pop', 'sv', 'dep', 'rl'];
+  const old = {}; for (const k of keys) old[k] = G[k] || new Array(oN * oN).fill(0);
+  for (const k of keys) G[k] = new Array(n).fill(0);
+  const oi = (x, y) => y * oN + x;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x, inside = x < oN && y >= oy && y < oy + oN;
+    if (inside) { const j = oi(x, y - oy); for (const k of keys) G[k][i] = old[k][j]; continue; }
+    // Kaynak kare: eski haritanın en yakın kenarı; kenardan uzaklık
+    const sx = Math.min(x, oN - 1), sy = clamp(y - oy, 0, oN - 1), j = oi(sx, sy);
+    const dist = Math.max(x - (oN - 1), y < oy ? oy - y : y - (oy + oN - 1), 0);
+    const st = old.t[j], noise = fbm(x / 7, y / 7, s + 61);
+    if (st === T_WATER && (x < oN || old.t[oi(oN - 1, sy)] === T_WATER)) { G.t[i] = T_WATER; continue; }       // nehir, göl ve deniz devam eder
+    if (st === T_ROCK && dist <= 3) { G.t[i] = T_ROCK; G.h[i] = old.h[j] || 2; continue; }                      // sıradağ kenarda biter
+    const hill = fbm(x / 6, y / 6, s + 73);
+    if (hill > 0.68) { G.t[i] = T_ROCK; G.h[i] = Math.round(clamp((hill - 0.68) * 18 + 1, 1, 5)); continue; }
+    G.t[i] = noise > 0.6 ? T_FOREST : T_GRASS;
+  }
+  G.N = N;
+  if (G.gov) G.gov.y += oy;
+  for (const m of G.multi || []) m.y += oy;
+  if (G.entry) G.entry.y += oy;
+  if (G.railEntry) G.railEntry.y += oy;
+  const shift = (o) => { const r = {}; for (const k in o || {}) { const v = +k; r[((v / oN) | 0) * N + oy * N + (v % oN)] = o[k]; } return r; };
+  G.mark = shift(G.mark); G.up = shift(G.up);
+  // Yeni arazideki kayalara birkaç yatak
+  const edge = []; for (let i = 0; i < n; i++) { const x = i % N, y = (i / N) | 0; if ((x >= oN || y < oy || y >= oy + oN) && G.t[i] === T_ROCK && neigh4(G, i).some(k => G.t[k] === T_GRASS || G.t[k] === T_FOREST)) edge.push(i); }
+  edge.sort((a, b) => fbm((a % N) / 4, ((a / N) | 0) / 4, s + 7) - fbm((b % N) / 4, ((b / N) | 0) / 4, s + 7));
+  edge.slice(0, 5).forEach(i => { G.dep[i] = D_COAL; }); edge.slice(-4).forEach(i => { if (!G.dep[i]) G.dep[i] = D_IRON; });
+  G.areas = [{ x: 0, y: oy, w: oN, h: oN, own: 1 }, { x: 0, y: 0, w: oN, h: oy, own: 0 }, { x: 0, y: oy + oN, w: oN, h: N - oy - oN, own: 0 },
+    { x: oN, y: 0, w: N - oN, h: 32, own: 0 }, { x: oN, y: 32, w: N - oN, h: 32, own: 0 }, { x: oN, y: 64, w: N - oN, h: 32, own: 0 }];
+  G.own = new Array(n).fill(0); markOwn(G, G.areas[0]); G.bought = 0;
+  G.forest0 = G.t.filter(t => t === T_FOREST).length;
+  G.tv = (G.tv || 0) + 1;
+  touch(G);
 }
 
 /* Eski (v1) kayıtları yeni sürüme taşır: şehir olduğu gibi kalır, yeni alanlar eklenir */
@@ -313,6 +368,12 @@ function upgradeSave(G) {
     for (const m of G.multi) { m.w = m.w || 2; m.h = m.h || 2; }
     if (G.fx.rail) addRailStub(G);
     G.v = 3;
+  }
+  if (G.v === 3) {
+    if (G.N === 64) enlarge(G);
+    if (!G.own) { G.own = new Array(G.N * G.N).fill(1); G.areas = []; G.bought = 0; }
+    G.v = 4;
+    msg(G, 'land', 'Harita büyüdü: şehrinin çevresine yeni araziler eklendi. Arazi aracıyla gri alanlara dokunup satın alabilirsin.');
   }
   return G;
 }
@@ -356,7 +417,7 @@ function rebuild(G) {
   const unit = (key, i, ok, center) => {
     const d = SVD[key];
     c.cnt[key] = (c.cnt[key] || 0) + 1;
-    if (d.cover && d.radius) around(G, center, d.radius, j => { c[d.cover][j] = 1; });
+    if (d.cover && d.radius) around(G, center, Math.round(d.radius * RADM[lvOf(G, i)]), j => { c[d.cover][j] = 1; });
     const lv = lvOf(G, i), mul = UP.out[lv];
     if (d.jobs && ok) c[d.edu ? 'eduJobs' : 'svcJobs'] += Math.round(d.jobs * UP.jobs[lv]);
     if (d.upkeep && lv > 1) c.upExtra += d.upkeep * (lv - 1);
@@ -496,7 +557,7 @@ function quote(G, tool, cells) {
     const i = cells[0], x = i % G.N, y = (i / G.N) | 0;
     for (let b = y; b < y + h; b++) for (let a = x; a < x + w; a++) {
       const j = inMap(G, a, b) ? idx(G, a, b) : -1;
-      if (j < 0 || !freeTile(G, j)) res.bad.push(j); else res.ok.push(j);
+      if (j < 0 || !freeTile(G, j) || (G.own && !G.own[j])) res.bad.push(j); else res.ok.push(j);
     }
     const P = tool === 'gov' ? 0 : totals(G).P;
     const edge = []; for (const j of res.ok) for (const k of neigh4(G, j)) if (!res.ok.includes(k)) edge.push(k);
@@ -511,9 +572,16 @@ function quote(G, tool, cells) {
     return res;
   }
   if (!G.gov) { res.err = 'Önce Valilik binasını kur'; res.bad = cells.slice(); return res; }
+  if (tool === 'buy') {
+    const a = areaAt(G, cells[0]);
+    if (!a || (G.own && G.own[cells[0]])) { res.err = 'Bu arazi zaten şehrin'; res.bad = cells.slice(0, 1); return res; }
+    for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) res.ok.push(idx(G, x, y));
+    res.cost = landPrice(G); return res;
+  }
   for (const i of cells) {
     const t = G.t[i];
     let ok = true, cost = 0;
+    if (G.own && !G.own[i]) { res.bad.push(i); res.err = 'Bu arazi henüz şehrin değil: Arazi aracıyla satın al'; continue; }
     if (tool === 'road') {
       if (G.r[i] || t === T_ROCK || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;   // boş alanın üstünden geçer, binayı yıkmaz
       else cost = t === T_WATER ? B.cost.bridge : G.rl[i] ? B.cost.overpass : t === T_FOREST ? B.cost.roadForest : B.cost.road;
@@ -603,6 +671,10 @@ function apply(G, tool, cells) {
   if (!q.ok.length || (whole && q.bad.length)) return { done: false, err: q.err || 'Buraya yapılamaz' };
   if (q.cost > G.money) return { done: false, err: 'Hazinede yeterli para yok' };
   G.money -= q.cost;
+  if (tool === 'buy') {
+    const a = areaAt(G, cells[0]); a.own = 1; markOwn(G, a); G.bought = (G.bought || 0) + 1; G.tv = (G.tv || 0) + 1; touch(G);
+    msg(G, 'land', 'Yeni arazi satın alındı.'); return { done: true, cost: q.cost, n: q.ok.length };
+  }
   if (tool === 'gov') {
     const i = cells[0]; G.gov = { x: i % G.N, y: (i / G.N) | 0 };
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = S_GOV; }
@@ -1035,7 +1107,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

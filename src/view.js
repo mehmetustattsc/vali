@@ -32,7 +32,7 @@ export function createView(canvas, G0) {
   const scene = new THREE.Scene();
   const sky = C('#cfe2ec');
   scene.background = sky;
-  scene.fog = new THREE.Fog(sky, 60, 150);
+  scene.fog = new THREE.Fog(sky, 80, 210);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 400);
 
   const hemi = new THREE.HemisphereLight('#e6f1ff', '#8a7a5a', 1.15);
@@ -67,7 +67,7 @@ export function createView(canvas, G0) {
   // Statik (ağaçlar) ve dinamik (binalar) havuzlar ayrı: binalar her gün yenilenir, ağaçlar sadece değişince
   const P = {
     tCone: pool(geo.cone, 9000), tBlob: pool(geo.blob, 4000), tTrunk: pool(geo.box, 13000),
-    box: pool(geo.box, 9000), roof: pool(geo.roof, 6000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200),
+    box: pool(geo.box, 16000), roof: pool(geo.roof, 10000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200),
     agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true), bridge: pool(geo.box, 3000, true), boat: pool(geo.box, 40, true),
   };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();
@@ -260,6 +260,18 @@ export function createView(canvas, G0) {
     }
   }
 
+  const ownMat = new THREE.MeshBasicMaterial({ color: '#1d2326', transparent: true, opacity: 0.32, depthWrite: false });
+  function buildOwn() {      // satın alınmamış arazi koyu görünür
+    if (!G.own) return;
+    flatMesh('own', ownMat, (q) => {
+      const black = new THREE.Color('#000');
+      for (let i = 0; i < N * N; i++) {
+        if (G.own[i]) continue;
+        const x = i % N, y = (i / N) | 0, x0 = x - N / 2, z0 = y - N / 2, h = G.t[i] === V.T_ROCK ? G.h[i] * 0.45 : G.t[i] === V.T_WATER ? -0.1 : 0;
+        q(x0, z0, x0 + 1, z0 + 1, h + 0.04, black);
+      }
+    }).renderOrder = 4;
+  }
   function buildFlats() {
     const cc = new THREE.Color(), month = V.dateOf(G).month;
     flatMesh('zone', zoneMat, (q) => {
@@ -819,7 +831,7 @@ export function createView(canvas, G0) {
   }
   function zoomAt(f, sx, sy) {
     const a = sx != null ? ground(sx, sy) : null;
-    cam.dist = Math.max(5, Math.min(75, cam.dist * f)); placeCamera();
+    cam.dist = Math.max(5, Math.min(105, cam.dist * f)); placeCamera();
     if (a) { const b = ground(sx, sy); if (b) { cam.tx += a.x - b.x; cam.tz += a.z - b.z; placeCamera(); } }
   }
   function rotate(d) { cam.yaw += d; placeCamera(); }
@@ -896,7 +908,7 @@ export function createView(canvas, G0) {
     flush(P.boat);
   }
 
-  function syncAll() { N = G.N; lastTv = G.tv; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats(); }
+  function syncAll() { N = G.N; lastTv = G.tv; buildTerrain(); buildRoads(); buildTrees(); buildGov(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats(); buildOwn(); }
   let lastTv = -1;
   function syncDay() {      // her oyun günü: binalar ve tarlalar
     if (G.tv !== lastTv) { lastTv = G.tv; buildTerrain(); buildTrees(); buildRoads(); syncTrain(); }
@@ -906,7 +918,7 @@ export function createView(canvas, G0) {
     if (overlay) buildOverlay();
   }
   function syncBuild() {    // oyuncu bir şey inşa ettiğinde
-    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats();
+    buildRoads(); buildTrees(); buildBuildings(); buildFlats(); buildOverlay(); syncAgents(); syncTrain(); syncBoats(); buildOwn();
     buildGov();
   }
   let clock = 0;
