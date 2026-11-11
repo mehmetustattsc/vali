@@ -54,6 +54,11 @@ const ICON = {
   tram: '<rect x="5" y="6" width="14" height="12" rx="2"/><path d="M5 12h14M9 18l-2 3M15 18l2 3M12 6V3M8 3h8"/>',
   dump: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
   pier: '<path d="M3 11h18M6 11v9M12 11v9M18 11v9M2 18c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1 2-1 4-1M9 11V6l5 2.5L9 11"/>',
+  bus: '<rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M7 17v3M17 17v3M8 14h.01M16 14h.01"/>',
+  lyceum: '<path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M12 14v7"/>',
+  hospital: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M12 9v8M8 13h8M9 5V3h6v2"/>',
+  cement: '<path d="M3 21h18M5 21V11h7v10M15 21V6h4v15M5 11l3.5-4L12 11"/>',
+  gas: '<path d="M12 3c2 3 6 6 6 11a6 6 0 0 1-12 0c0-5 4-8 6-11zM12 21v-5"/>',
   scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
 };
 const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
@@ -89,6 +94,11 @@ const TOOL_INFO = {
   power: { name: 'Kömür santrali', tip: '2×2: 900 birim elektrik, ayda 20 kömür yakar. Çevresi kirlenir, mahallelerden uzak tut.' },
   hydro: { name: 'Su santrali', tip: 'Kıyıya bitişik suya kurulur: 450 birim temiz elektrik, kömür istemez.' },
   factory: { name: 'Fabrika', tip: '2×2: 40 kişiye iş ve her ay gelir. Elektrik ister, ayda 8 kömür ve 8 demir işler.' },
+  bus: { name: 'Otobüs durağı', tip: 'Geniş bir çevrede ulaşım sağlar. Blok apartmanlar için ulaşım ve hastane gerekir.' },
+  lyceum: { name: 'Lise', tip: 'Geniş bir alanda eğitim; eğitimlilere iş verir.' },
+  hospital: { name: 'Hastane', tip: 'Geniş bir alanda sağlık; eğitimlilere iş verir.' },
+  cement: { name: 'Çimento fabrikası', tip: 'Dağın dibine kurulur, çimento üretir. 1930 sonrası görevler çimento ister.' },
+  gas: { name: 'Doğalgaz santrali', tip: '2×2: 2000 birim elektrik, kömür istemez ama gideri yüksektir.' },
   tram: { name: 'Tramvay durağı', tip: 'Çevresinde ulaşım sağlar. Apartmanlar için elektrikle birlikte ulaşım gerekir.' },
   dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250 kişiye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
   pier: { name: 'İskele', tip: 'Kıyıya bitişik suya kurulur: balıkçılık her ay gıda verir.' },
@@ -96,11 +106,11 @@ const TOOL_INFO = {
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
   svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
-const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks', 'tram', 'dump'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'power', 'hydro', 'factory'] };
+const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks', 'tram', 'dump', 'bus', 'lyceum', 'hospital'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'power', 'hydro', 'factory', 'cement', 'gas'] };
 const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
-const COVER = { tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
-const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak', 'Apartman'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han'] };
+const COVER = { bus: 'transit', lyceum: 'school', hospital: 'clinic', tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
+const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak', 'Apartman', 'Blok apartman'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han'] };
 const ZONE_NAME = { 1: 'Konut alanı', 2: 'Tarla alanı', 3: 'Ticaret alanı' };
 const SPEEDS = [0, 1, 2, 5];
 const DAY_MS = 1500;   // 1x: bir gün 1,5 saniye, bir ay 45 saniye; en hızlıda bir yıl yaklaşık 1,8 dakika
@@ -282,7 +292,7 @@ function budgetHtml() {
   const v = (x) => x ? sgn(x) : '0';
   return `<p class="lead">Geçen ayın hesabı. Vergi oranını buradan değiştirebilirsin.</p>
   <h3>Gelir</h3>
-  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Esnaf, eğitimli ve varlıklılardan', v((i.taxE || 0) + (i.taxO || 0) + (i.taxV || 0)))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom biletleri', v(i.tickets || 0))}${row('Fabrika geliri', v(i.factory || 0))}
+  ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Esnaf, eğitimli ve varlıklılardan', v((i.taxE || 0) + (i.taxO || 0) + (i.taxV || 0)))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom ve stadyum biletleri', v(i.tickets || 0))}${row('Fabrika geliri', v(i.factory || 0))}
   <h3>Gider</h3>
   ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
@@ -438,6 +448,7 @@ function tileInfo(i) {
     if (key === 'ranch') h += row('Aylık gıda', VL.B.ranchFood);
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
     if (key === 'hydro') h += row('Elektrik', VL.B.power.hydro + ' birim');
+    if (key === 'gas') h += row('Elektrik', 2000 * (up ? up.mul : 1) + ' birim');
     if (key === 'factory') h += row('Gelir', '≈' + VL.B.factory.income + '/ay') + row('Elektrik tüketimi', VL.B.power.factoryUse + ' birim');
     if (key === 'dump') h += row('Kapasite', fmt(VL.B.dumpCap * (up ? up.mul : 1)) + ' kişi');
     if (key === 'pier') h += row('Aylık balık', VL.B.pierFood + ' gıda');

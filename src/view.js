@@ -383,7 +383,7 @@ export function createView(canvas, G0) {
         continue;
       }
       if (building) {   // iskele: ahşap çatkı yükselir
-        const hgt = (z === V.Z_RES ? [0, 0.34, 0.55, 0.85, 1.5] : [0, 0.42, 0.65, 1.1])[lv] * (0.15 + 0.85 * pg);
+        const hgt = (z === V.Z_RES ? [0, 0.34, 0.55, 0.85, 1.5, 2.6] : [0, 0.42, 0.65, 1.1])[lv] * (0.15 + 0.85 * pg);
         const w = lv === 1 ? 0.5 : lv === 2 ? 0.66 : 0.84;
         part(P.box, cx, cz, rot, 0, 0, 0.05, w, hgt, w * 0.85, PAL.timber);
         for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) part(P.box, cx, cz, rot, a * w * 0.55, 0, 0.05 + b * w * 0.48, 0.03, hgt + 0.12, 0.03, '#8a6a42');
@@ -406,6 +406,11 @@ export function createView(canvas, G0) {
           part(P.roof, cx, cz, rot, 0, 0.86, 0.03, 0.9, 0.24, 0.76, rc);
           part(P.box, cx, cz, rot, 0, 0, 0.39, 0.88, 0.07, 0.02, '#a08f75');
           part(P.box, cx, cz, rot, -0.24, 0.92, -0.1, 0.08, 0.24, 0.08, '#6e5d50');
+        } else if (lv === 5) {      // blok apartman
+          const wc = pick(['#cfcac0', '#bfb9ae', '#d8d2c4', '#b5b0a8'], r);
+          part(P.box, cx, cz, rot, 0, 0, 0.02, 0.9, 2.6, 0.82, wc); part(P.box, cx, cz, rot, 0, 2.6, 0.02, 0.94, 0.05, 0.86, '#55504a');
+          for (let k = 0; k < 7; k++) part(P.box, cx, cz, rot, 0, 0.32 + k * 0.33, 0.43, 0.82, 0.14, 0.012, '#4d6a80');
+          part(P.box, cx, cz, rot, 0, 0, 0.43, 0.24, 0.24, 0.012, '#3b3a38');
         } else {      // apartman
           const wc = pick(['#d9c7a8', '#c9b7a0', '#b9a48c', '#cfbfae'], r);
           part(P.box, cx, cz, rot, 0, 0, 0.02, 0.88, 1.5, 0.78, wc);
@@ -453,6 +458,22 @@ export function createView(canvas, G0) {
     } else if (sv === V.S_QUARRY) {
       for (const [a, b, h] of [[-0.2, -0.15, 0.16], [0.05, -0.2, 0.22], [-0.1, 0.15, 0.12], [0.22, 0.12, 0.18]]) B_(a, 0, b, 0.2, h, 0.2, pick(PAL.rock, r + a));
       B_(0.3, 0, -0.3, 0.05, 0.8, 0.05, '#6d5134'); B_(0.15, 0.78, -0.3, 0.4, 0.04, 0.04, '#6d5134');
+    } else if (sv === V.S_BUS) {
+      put(P.box, cx, 0, cz, 0.8, 0.04, 0.4, rot, '#bdb5a5'); B_(0, 0.38, -0.1, 0.7, 0.03, 0.3, '#2e6fb0');
+      for (const a of [-0.3, 0.3]) part(P.cyl, cx, cz, rot, a, 0.04, -0.22, 0.03, 0.34, 0.03, '#3a3a3a');
+      B_(0, 0.04, -0.2, 0.5, 0.07, 0.08, '#6b6b6b'); B_(0.36, 0.04, 0.16, 0.03, 0.7, 0.03, '#3a3a3a'); B_(0.36, 0.7, 0.16, 0.14, 0.14, 0.02, '#2e6fb0');
+    } else if (sv === V.S_LYCEUM) {
+      B_(0, 0, 0, 0.9, 0.7, 0.66, '#e3d5b8'); R_(0, 0.7, 0, 0.94, 0.2, 0.7, '#8a4a36');
+      for (const a of [-0.3, -0.1, 0.1, 0.3]) for (const yy of [0.18, 0.44]) B_(a, yy, 0.335, 0.11, 0.14, 0.012, '#4d6a80');
+      B_(0, 0, 0.335, 0.18, 0.26, 0.012, '#4b3a2c');
+    } else if (sv === V.S_HOSPITAL) {
+      B_(0, 0, 0, 0.92, 0.9, 0.7, '#f2efe8'); B_(0, 0.9, 0, 0.95, 0.05, 0.73, '#8d8a84');
+      for (const a of [-0.3, 0, 0.3]) for (const yy of [0.2, 0.5]) B_(a, yy, 0.355, 0.14, 0.16, 0.012, '#5d7d95');
+      B_(0, 0.62, 0.36, 0.22, 0.06, 0.012, '#c0392b'); B_(0, 0.56, 0.36, 0.06, 0.18, 0.012, '#c0392b');
+    } else if (sv === V.S_CEMENT) {
+      B_(-0.18, 0, 0.1, 0.5, 0.42, 0.5, '#b7b2a8'); R_(-0.18, 0.42, 0.1, 0.54, 0.14, 0.54, '#6f6c66');
+      part(P.cyl, cx, cz, rot, 0.25, 0, -0.2, 0.22, 0.75, 0.22, '#c9c5bc'); part(P.cone, cx, cz, rot, 0.25, 0.75, -0.2, 0.24, 0.12, 0.24, '#8d8a84');
+      B_(0.28, 0, 0.28, 0.06, 0.95, 0.06, '#8d8a84');
     } else if (sv === V.S_TRAM) {
       put(P.box, cx, 0, cz, 0.9, 0.05, 0.5, rot, '#bdb5a5');
       B_(0, 0.42, -0.08, 0.8, 0.04, 0.34, '#3f6b5a');
@@ -504,6 +525,13 @@ export function createView(canvas, G0) {
         put(P.box, cx + a, 0, cz + b, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.14, cz + b, 0.42, 0.6, 0.42, 0, PAL.leaf[1]);
       }
       for (const [a, b, w, d] of [[0, -0.42, 0.5, 0.1], [0, 0.42, 0.5, 0.1], [-0.42, 0, 0.1, 0.5], [0.42, 0, 0.1, 0.5]]) Bx(a, 0.03, b, w, 0.08, d, '#8a6845');
+      return;
+    }
+    if (m.k === V.S_GAS) {
+      Bx(0, 0, 0, 1.94, 0.04, 1.94, '#a39a86');
+      Bx(-0.35, 0.04, 0.3, 1.1, 0.6, 0.9, '#c8c2b6'); Bx(-0.35, 0.64, 0.3, 1.14, 0.05, 0.94, '#5f6f78');
+      for (const [a, b] of [[0.55, -0.5], [0.55, 0.35]]) { put(P.cyl, cx + a, 0.04, cz + b, 0.5, 0.55, 0.5, 0, '#dcd8d0'); put(P.cone, cx + a, 0.59, cz + b, 0.52, 0.1, 0.52, 0, '#b9b4aa'); }
+      put(P.cyl, cx - 0.6, 0.04, cz - 0.6, 0.14, 1.6, 0.14, 0, '#d8d2c4'); put(P.cyl, cx - 0.6, 1.5, cz - 0.6, 0.16, 0.12, 0.16, 0, '#c0392b');
       return;
     }
     if (m.k === V.S_RANCH) {
@@ -635,6 +663,27 @@ export function createView(canvas, G0) {
       Bx(0, 0, 0, 1.94, 0.08, 1.94, '#cdbf9e'); Bx(0, 0.08, -0.2, 1.7, 0.8, 1.0, '#efe6d2'); put(P.roof, cx, 0.88, cz - 0.2, 1.76, 0.24, 1.06, 0, '#7b3f2e');
       for (const a of [-0.6, -0.3, 0, 0.3, 0.6]) put(P.cyl, cx + a, 0.08, cz + 0.42, 0.1, 0.72, 0.1, 0, '#f8f4ea');
       Bx(0, 0.8, 0.42, 1.5, 0.1, 0.24, '#efe6d2'); put(P.cyl, cx, 1.0, cz - 0.2, 0.6, 0.25, 0.6, 0, '#efe6d2'); put(P.cone, cx, 1.25, cz - 0.2, 0.66, 0.42, 0.66, 0, '#5f8f8a');
+    } else if (m.pid === 'dam') {
+      Bx(0, 0, 0, 1.94, 0.1, 1.94, '#9aa0a0'); Bx(0, 0.1, -0.3, 1.94, 0.9, 0.5, '#c5c7c2');
+      Bx(0, 1.0, -0.3, 1.94, 0.06, 0.6, '#8d8f8a'); Bx(0, 0.1, 0.35, 1.9, 0.04, 1.1, PAL.waterLit);
+      for (const a of [-0.6, 0, 0.6]) Bx(a, 0.3, -0.04, 0.2, 0.5, 0.02, '#e8eef2');
+      Bx(0.6, 0.1, 0.6, 0.6, 0.45, 0.5, '#b7b2a8'); put(P.roof, cx + 0.6, 0.55, cz + 0.6, 0.64, 0.16, 0.54, 0, '#5f6f78');
+    } else if (m.pid === 'motorway') {
+      put(P.cyl, cx, 0, cz, 1.9, 0.03, 1.9, 0, '#7f8f55');
+      Bx(0, 0.03, 0, 1.96, 0.04, 0.5, '#5e5c59'); Bx(0, 0.25, 0, 0.5, 0.04, 1.96, '#5e5c59');
+      for (const a of [-0.6, 0.6]) Bx(0, 0.03, a * 0.3, 0.02, 0.22, 0.02, '#a8a49c');
+      for (const b of [-0.3, 0.3]) Bx(b, 0.03, 0, 0.08, 0.22, 0.4, '#a8a49c');
+      Bx(0, 0.08, 0, 1.9, 0.01, 0.03, '#f2d27a'); Bx(0, 0.3, 0, 0.03, 0.01, 1.9, '#f2d27a');
+    } else if (m.pid === 'airport') {
+      Bx(0, 0, 0, 1.96, 0.02, 1.96, '#8fae5e'); Bx(0.25, 0.02, 0, 0.5, 0.02, 1.96, '#5e5c59');
+      for (let k = -0.8; k <= 0.8; k += 0.4) Bx(0.25, 0.04, k, 0.04, 0.005, 0.18, '#f4efe2');
+      Bx(-0.55, 0.02, 0.3, 0.7, 0.4, 1.0, '#d8d2c4'); Bx(-0.55, 0.42, 0.3, 0.74, 0.04, 1.04, '#5f6f78');
+      put(P.cyl, cx - 0.55, 0.02, cz - 0.6, 0.14, 0.95, 0.14, 0, '#d8d2c4'); put(P.cyl, cx - 0.55, 0.97, cz - 0.6, 0.26, 0.16, 0.26, 0, '#4d6a80');
+      Bx(0.25, 0.05, -0.45, 0.12, 0.08, 0.55, '#eef0f2'); Bx(0.25, 0.08, -0.45, 0.55, 0.02, 0.12, '#eef0f2'); Bx(0.25, 0.09, -0.7, 0.2, 0.08, 0.04, '#c0392b');
+    } else if (m.pid === 'stadium') {
+      put(P.cyl, cx, 0, cz, 1.96, 0.45, 1.6, 0, '#cfc9bd'); put(P.cyl, cx, 0.3, cz, 1.5, 0.18, 1.14, 0, '#7fae58');
+      for (const a of [-0.25, 0.25]) Bx(a, 0.48, 0, 0.02, 0.01, 0.6, '#f4efe2');
+      for (const [a, b] of [[0.9, 0.7], [-0.9, 0.7], [0.9, -0.7], [-0.9, -0.7]]) { put(P.cyl, cx + a, 0, cz + b, 0.03, 1.2, 0.03, 0, '#5b5b5b'); Bx(a, 1.2, b, 0.16, 0.1, 0.04, '#f2d27a'); }
     } else if (m.pid === 'victory') {
       put(P.cyl, cx, 0, cz, 1.94, 0.04, 1.94, 0, '#cdbf9e'); put(P.cyl, cx, 0.04, cz, 1.0, 0.1, 1.0, 0, '#bdb5a5'); put(P.cyl, cx, 0.14, cz, 0.7, 0.1, 0.7, 0, '#c9c0ad');
       Bx(0, 0.24, 0, 0.36, 0.5, 0.36, '#d9cdb2'); Bx(0, 0.74, 0, 0.24, 1.7, 0.24, '#e6dcc4'); put(P.pyr, cx, 2.44, cz, 0.3, 0.3, 0.3, 0, '#d4ac0d');
@@ -650,8 +699,8 @@ export function createView(canvas, G0) {
   let agents = [], agentEra = '';
   function roadTiles() { const r = []; for (let i = 0; i < N * N; i++) if (G.r[i]) r.push(i); return r; }
   function syncAgents() {
-    const T0 = V.totals(G), want = Math.min(140, Math.floor(3 + T0.P / 10)), tramOn = !!V.cache(G).cnt.tram, carOn = T0.yr >= 1908;
-    if (agentEra !== tramOn + '|' + carOn) { agentEra = tramOn + '|' + carOn; agents = []; }
+    const T0 = V.totals(G), want = Math.min(140, Math.floor(3 + T0.P / 10)), tramOn = !!V.cache(G).cnt.tram, busOn = !!V.cache(G).cnt.bus, carOn = T0.yr >= 1908;
+    if (agentEra !== tramOn + '|' + carOn + '|' + busOn) { agentEra = tramOn + '|' + carOn + '|' + busOn; agents = []; }
     const roads = roadTiles();
     if (!roads.length) { agents = []; return; }
     while (agents.length > want) agents.pop();
@@ -660,7 +709,7 @@ export function createView(canvas, G0) {
       const cart = Math.random() < 0.35;
       agents.push({ a, b: a, t: 1, sp: cart ? 0.55 : 0.32 + Math.random() * 0.12, cart, col: cart ? '#6b4b2e' : pick(['#7a3b2e', '#2e4a7a', '#4a6b3a', '#6a5a7a', '#8a7a5a', '#3a3a3a'], Math.random()), side: Math.random() < 0.5 ? 1 : -1 });
       const g = agents[agents.length - 1];
-      if (tramOn && Math.random() < 0.12) { g.tram = 1; g.sp = 0.7; } else if (g.cart && carOn && Math.random() < 0.5) { g.car = 1; g.sp = 0.95; }
+      if (busOn && Math.random() < 0.1) { g.bus = 1; g.sp = 0.8; } else if (tramOn && Math.random() < 0.12) { g.tram = 1; g.sp = 0.7; } else if (g.cart && carOn && Math.random() < (T0.yr >= 1930 ? 0.85 : 0.5)) { g.car = 1; g.sp = 0.95; }
     }
   }
   function stepAgents(dt) {
@@ -678,7 +727,8 @@ export function createView(canvas, G0) {
       const dx = bx - ax, dz = bz - az, x = ax + dx * g.t + dz * 0.13 * g.side, z = az + dz * g.t - dx * 0.13 * g.side;
       const wa = elevated(g.a), wb = elevated(g.b), onB = wa && wb ? DECK + 0.005 : wa || wb ? 0.015 + (DECK - 0.01) * (wa ? 1 - g.t : g.t) : 0.015;
       const rot = Math.atan2(dx, dz);
-      if (g.tram) put(P.agent, x, onB, z, 0.13, 0.17, 0.42, rot, '#c9a227');
+      if (g.bus) put(P.agent, x, onB, z, 0.13, 0.16, 0.4, rot, '#2e6fb0');
+      else if (g.tram) put(P.agent, x, onB, z, 0.13, 0.17, 0.42, rot, '#c9a227');
       else if (g.cart) put(P.agent, x, onB, z, g.car ? 0.11 : 0.12, 0.1, g.car ? 0.24 : 0.2, rot, g.car ? '#22262b' : g.col);
       else put(P.agent, x, onB, z, 0.045, 0.12, 0.045, rot, g.col);
     }
