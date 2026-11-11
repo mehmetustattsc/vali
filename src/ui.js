@@ -275,17 +275,18 @@ function updateHud(force) {
 }
 
 /* ---------- paneller ---------- */
-let overlayPinned = false;
+let overlayPinned = false, cityTab = 'pop';
 function togglePanel(kind) { if (panelKind === kind) closePanel(); else { panelKind = kind; renderPanel(); $('#panel').hidden = false; $('#app').classList.add('with-panel'); } }
 function closePanel() { panelKind = null; $('#panel').hidden = true; $('#app').classList.remove('with-panel'); if (selected >= 0) { selected = -1; view.select(-1); } }
 
 function renderPanel() {
-  const head = $('#panel h2'), body = $('#panel .body');
+  const head = $('#panel h2'), body = $('#panel .body'), keep = body.scrollTop, same = body.dataset.kind === panelKind + (panelKind === 'city' ? cityTab : '');
   if (panelKind === 'budget') { head.textContent = 'Bütçe'; body.innerHTML = budgetHtml(); bindBudget(); }
-  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); }
+  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { cityTab = b.dataset.tab; renderPanel(); } }; }
   else if (panelKind === 'game') { head.textContent = 'Menü'; body.innerHTML = gameHtml(); bindGame(); }
   else if (panelKind === 'proj') { head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); }; }
   else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; const b = $('#gUp'); if (b) b.onclick = () => { const r = VL.upgrade(G, selected); if (!r.done) toast(r.err); else { view.syncBuild(); updateHud(true); renderPanel(); } }; }
+  body.scrollTop = same ? keep : 0; body.dataset.kind = panelKind + (panelKind === 'city' ? cityTab : '');
 }
 
 function row(label, val, cls = '') { return `<div class="row ${cls}"><span>${label}</span><b>${val}</b></div>`; }
@@ -331,13 +332,16 @@ function cityHtml() {
       <div class="chips">${fs || '<span class="note">Ay sonunda hesaplanır</span>'}</div></div>`;
   };
   const dem = (d) => d > 2 ? 'Yüksek' : d > 0 ? 'Var' : d > -6 ? 'Dengede' : 'Yok';
-  return `${VL.GRP.filter(g => G.grp[g] || T.jobs[g]).map(g => grp(g, VL.GRP_NAME[g], T.jobs[g])).join('')}
-  <h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${row('Tüketim', fmt(G.food.cons))}${T.fish ? row('Balık ve hayvancılık', fmt(T.fish)) : ''}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}
-  <h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}
-  ${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
-  ${T.yr >= 1890 ? '<h3>Altyapı</h3>' + row('Elektrik (üretim / tüketim)', fmt(T.pcap) + ' / ' + fmt(T.puse), T.power < 0.9 ? 'neg' : '') + row('Çöp toplama', '%' + Math.round(T.waste * 100), T.waste < 0.9 && T.yr >= 1900 ? 'neg' : '') : ''}
-  ${riskHtml()}
-  <p class="note">Bölge talebi, çevredeki köy ve kasabaların ürünlerine ilgisidir. Memnun bir şehirde zamanla artar.</p>`;
+  const tabs = [['pop', 'Nüfus'], ['prod', 'Üretim'], ['infra', 'Altyapı'], ['dem', 'Talep']];
+  let h = `<div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" class="${k === cityTab ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  if (cityTab === 'pop') h += row('Toplam nüfus', fmt(T.P)) + row('Ortalama memnuniyet', '%' + Math.round(VL.avgHap(G))) + row('Boş konut', fmt(T.free)) +
+    VL.GRP.filter(g => G.grp[g] || T.jobs[g]).map(g => grp(g, VL.GRP_NAME[g], T.jobs[g])).join('');
+  else if (cityTab === 'prod') h += `<h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${T.fish ? row('Balık ve hayvancılık', fmt(T.fish)) : ''}${row('Tüketim', fmt(G.food.cons))}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}` + storeHtml();
+  else if (cityTab === 'infra') h += (T.yr >= 1890 ? '<h3>Elektrik ve çöp</h3>' + row('Elektrik (üretim / tüketim)', fmt(T.pcap) + ' / ' + fmt(T.puse), T.power < 0.9 ? 'neg' : '') + row('Çöp toplama', '%' + Math.round(T.waste * 100), T.waste < 0.9 && T.yr >= 1900 ? 'neg' : '') : '<p class="note">Elektrik ve çöp 1890’dan sonra önem kazanır.</p>') +
+    '<h3>Hizmet kapsamı (halkın yüzde kaçı)</h3>' + [['water', 'Su'], ['police', 'Asayiş'], ['fire', 'İtfaiye'], ['school', 'Eğitim'], ['clinic', 'Sağlık'], ['transit', 'Ulaşım'], ['square', 'Meydan'], ['fun', 'Eğlence']].map(([k, n]) => row(n, '%' + Math.round((T.cov[k] || 0) * 100), (T.cov[k] || 0) < 0.6 ? 'neg' : '')).join('') + riskHtml();
+  else h += `<h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
+    <p class="note">Bölge talebi, çevredeki köy ve kasabaların ürünlerine ilgisidir. Memnun ve iyi bağlantılı bir şehirde zamanla artar.</p>`;
+  return h;
 }
 
 /* Görev paneli: aktif görev, teslimat, ambar ve üretim */
@@ -360,7 +364,13 @@ function projHtml() {
     const p = VL.PROJECTS[G.projNext];
     h += `<p class="lead">Sıradaki görev ${p.year}${VL.yearOf(G) >= p.year ? ' (şehir dış yola bağlanınca)' : ''}: <b>${p.name}</b>. ${p.desc}</p>`;
   } else h += '<p class="lead">Bu dönemin bütün görevleri bitti.</p>';
-  h += `<h3>Ambar <span>itibar ${G.itibar}</span></h3>`;
+  h += storeHtml();
+  if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.year + (d.late ? ' · geç' : ''))).join('');
+  return h;
+}
+
+function storeHtml() {
+  let h = `<h3>Ambar <span>itibar ${G.itibar}</span></h3>`;
   const U = G.used || {}, Tw = VL.totals(G), staff = Tw.workJobs ? Math.min(1, G.grp.i / Tw.workJobs) : 0;
   for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}</small>${U[k] ? `<small class="neg"> −${fmt(U[k])}</small>` : ''}<small>/ay</small>`);
   h += row('İşçi doluluğu', '%' + Math.round(staff * 100), staff < 0.8 ? 'neg' : '');
@@ -369,7 +379,6 @@ function projHtml() {
   h += '<p class="note">Kömürü santraller, fabrikalar ve kışla; demiri fabrikalar kullanır. Görev şantiyesinin payı her zaman önce ayrılır, fabrikalar kalanı işler.</p>';
   const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
   h += `<p class="note">Ambar her kaynaktan en çok ${VL.B.stockCap} birim tutar, fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
-  if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.year + (d.late ? ' · geç' : ''))).join('');
   return h;
 }
 
@@ -466,7 +475,7 @@ function tileInfo(i) {
       h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez. Raya ya da yük istasyonuna yakın olursa malı daha pahalıya satılır.</p>';
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
-    if (up && up.lv < up.max) h += `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${d.out || key === 'ranch' || key === 'power' || key === 'hydro' || key === 'gas' || key === 'factory' ? 'Üretim ×' + up.nextMul : key === 'dump' ? 'Kapasite ×' + up.nextMul : 'Etki yarıçapı ' + Math.round(d.radius * VL.RADM[up.lv + 1]) + ' kare'} olur; daha çok işçi ister, gideri artar.</p>`;
+    if (up && up.lv < up.max) h = `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${d.out || key === 'ranch' || key === 'power' || key === 'hydro' || key === 'gas' || key === 'factory' ? 'Üretim ×' + up.nextMul : key === 'dump' ? 'Kapasite ×' + up.nextMul : 'Etki yarıçapı ' + Math.round(d.radius * VL.RADM[up.lv + 1]) + ' kare'} olur; daha çok işçi ister, gideri artar.</p>` + h;
     return { title: d.name + (up && up.lv > 1 ? ' · seviye ' + up.lv : ''), html: h };
   }
   const mk = G.mark && G.mark[i];
