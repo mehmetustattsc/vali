@@ -864,7 +864,8 @@ export function createView(canvas, G0) {
   function syncTrain() {
     const c = V.cache(G);
     if (!c.railOut || !G.railEntry) { train = null; P.train.count = 0; flush(P.train); return; }
-    const st = G.multi.find(m => m.k === V.S_LANDMARK && m.pid === 'rail');
+    const st = G.multi.find(m => m.k === V.S_LANDMARK && m.pid === 'rail') || G.multi.find(m => m.k === V.S_PSTATION) || G.multi.find(m => m.k === V.S_FSTATION);
+    if (!st) { train = null; return; }
     const stTiles = new Set(V.multiTiles(G, st));
     const start = G.railEntry.y * N + G.railEntry.x, prev = new Map([[start, -1]]), q = [start];
     let end = -1;

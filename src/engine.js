@@ -212,7 +212,18 @@ function newGame(opts) {
   G.bought = 0;
   genDeposits(G);
   G.forest0 = G.t.filter(t => t === T_FOREST).length;
+  setupEra(G);
   return G;
+}
+
+/* Geç başlangıç (1900, 1950): önceki dönemlerin görevleri tamamlanmış sayılır, kalıcı etkileri ve bağlantıları gelir */
+function setupEra(G) {
+  const y = G.startYear; if (y <= 1850) return;
+  G.money = y >= 1950 ? 30000 : 12000;
+  while (G.projNext < PROJECTS.length && PROJECTS[G.projNext].year < y) { const p = PROJECTS[G.projNext]; G.done.push({ id: p.id, year: p.year, late: 0, pre: 1 }); G.fx[p.id] = 1; G.projNext++; }
+  if (G.fx.rail) addRailStub(G);
+  if (G.fx.motorway) addMotorStub(G);
+  G.msgs = [];
 }
 
 function genRiverMap(G) {
@@ -403,11 +414,12 @@ function rebuild(G) {
     if (G.z[i]) c.zones[G.z[i]].push(i);
   }
   // Demiryolu ağı: istasyona (demiryolu anıtı) değen raylardan
-  const st = G.multi.find(m => m.k === S_LANDMARK && m.pid === 'rail');
-  if (st) {
+  // Demiryolu ağı: gardan ya da yolcu/yük istasyonlarından başlar (geç dönem başlangıçlarında gar olmayabilir)
+  const sts = G.multi.filter(m => (m.k === S_LANDMARK && m.pid === 'rail') || m.k === S_PSTATION || m.k === S_FSTATION);
+  if (sts.length) {
     const rq = [];
-    c.station = idx(G, st.x, st.y);
-    for (const i of multiTiles(G, st)) for (const j of neigh4(G, i)) if (G.rl[j] && !c.rnet[j]) { c.rnet[j] = 1; rq.push(j); }
+    c.station = idx(G, sts[0].x, sts[0].y);
+    for (const st of sts) for (const i of multiTiles(G, st)) for (const j of neigh4(G, i)) if (G.rl[j] && !c.rnet[j]) { c.rnet[j] = 1; rq.push(j); }
     while (rq.length) { const i = rq.pop(); if (G.rl[i] === 2) c.railOut = true; for (const j of neigh4(G, i)) if (G.rl[j] && !c.rnet[j]) { c.rnet[j] = 1; rq.push(j); } }
   }
   for (let i = 0; i < n; i++) if (G.rl[i] === 1) c.rails++;
@@ -564,7 +576,7 @@ function quote(G, tool, cells) {
     const cc = cache(G);
     if (d && d.minP && P < d.minP) { res.err = `${d.name} için en az ${d.minP} nüfus gerekir`; res.bad = res.ok.concat(res.bad); res.ok = []; }
     else if (d && d.needRail && !G.fx.rail) { res.err = 'Demiryolu görevi bitince açılır'; res.bad = res.ok.concat(res.bad); res.ok = []; }
-    else if (d && d.needRail && !res.bad.length && !edge.some(k => cc.rnet[k])) { res.err = `${d.name} istasyona bağlı bir rayın yanına kurulur`; res.bad = res.ok; res.ok = []; }
+    else if (d && d.needRail && !res.bad.length && !edge.some(k => G.rl[k])) { res.err = `${d.name} bir rayın yanına kurulur`; res.bad = res.ok; res.ok = []; }
     else if (d && d.needWater && !res.bad.length && edge.filter(k => G.t[k] === T_WATER).length < 2) { res.err = 'Liman su kıyısına kurulur'; res.bad = res.ok; res.ok = []; }
     else if (d && d.needFarm && !res.bad.length && !edge.some(k => G.z[k] === Z_FARM)) { res.err = d.name + ' bir tarlanın yanına kurulur'; res.bad = res.ok; res.ok = []; }
     else if (res.bad.length) res.err = (tool === 'gov' ? 'Valilik' : d.name) + ` için ${w}×${h} boş arazi gerekir`;

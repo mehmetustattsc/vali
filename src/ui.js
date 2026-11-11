@@ -365,7 +365,7 @@ function projHtml() {
     h += `<p class="lead">Sıradaki görev ${p.year}${VL.yearOf(G) >= p.year ? ' (şehir dış yola bağlanınca)' : ''}: <b>${p.name}</b>. ${p.desc}</p>`;
   } else h += '<p class="lead">Bu dönemin bütün görevleri bitti.</p>';
   h += storeHtml();
-  if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.year + (d.late ? ' · geç' : ''))).join('');
+  if (G.done.length) h += '<h3>Biten görevler</h3>' + G.done.map(d => row(VL.PROJECTS.find(p => p.id === d.id).name, d.pre ? 'önceki dönem' : d.year + (d.late ? ' · geç' : ''))).join('');
   return h;
 }
 
@@ -716,9 +716,10 @@ function showMenu(hasSave) {
   const m = $('#menu'); m.hidden = false;
   const maps = [['river', 'Nehir kenarı', 'Dengeli başlangıç: su, orman ve maden bir arada.'], ['flat', 'Geniş ova', 'Verimli toprak (+%20 tarla verimi), bol yer. Taş ve maden yalnızca kuzeydoğudaki tepede.'], ['mount', 'Dağlık', 'Maden ve taş bol, düz arazi dar bir vadi. Toprak zayıf (−%10).'], ['lake', 'Büyük göl', 'Şehir gölün çevresine yayılır. Liman ve iskeleler için uzun kıyı.'], ['sea', 'Deniz kıyısı', 'Liman ticareti %20 daha kârlı. Sonbaharda fırtına kıyıyı vurur.']];
   let mapSel = 'river';
-  const years = [[1850, true], [1900], [1950], [2000], [2026]];
+  const years = [[1850, 1, 'Kasaba kuruluyor: at arabaları, tarlalar, ilk görev su kemeri.'], [1900, 1, 'Elektrik çağı: demiryolu ve su kemeri hazır, 12.000 hazine. Sıradaki görev kanalizasyon.'], [1950, 1, 'Motor çağı: otoyol bağlantısı dahil önceki görevler hazır, 30.000 hazine. Sıradaki görev havalimanı.'], [2000], [2026]];
+  let yearSel = 1850;
   m.innerHTML = `<div class="menu-card">
-    <h1>Vali</h1><p class="sub">Şehrini 1850'den kur, büyüt, yönet.</p>
+    <h1>Vali</h1><p class="sub">Şehrini kur, büyüt, yönet.</p>
     <div class="menu-actions">
       ${hasSave ? '<button class="primary" id="mCont">Devam et</button>' : ''}
       <button class="${hasSave ? '' : 'primary'}" id="mNew">Yeni şehir</button>
@@ -727,7 +728,7 @@ function showMenu(hasSave) {
     <div class="saves" hidden></div>
     <div class="setup" hidden>
       <h3>Harita</h3><div class="cards">${maps.map(([k, n]) => `<button class="card ${k === mapSel ? 'on' : ''}" data-map="${k}"><i class="map-${k}"></i><span>${n}</span></button>`).join('')}</div><p class="note" id="mapNote">${maps[0][2]}</p>
-      <h3>Başlangıç yılı</h3><div class="chips">${years.map(([y, ok]) => `<button class="chip ${ok ? 'on' : ''}" ${ok ? '' : 'disabled'}>${y}${ok ? '' : ' · yakında'}</button>`).join('')}</div>
+      <h3>Başlangıç yılı</h3><div class="chips years">${years.map(([y, ok]) => `<button class="chip ${y === yearSel ? 'on' : ''}" data-year="${y}" ${ok ? '' : 'disabled'}>${y}${ok ? '' : ' · yakında'}</button>`).join('')}</div><p class="note" id="yearNote">${years[0][2]}</p>
       <button class="primary" id="mGo">Şehri kur</button>
     </div></div>`;
   if (hasSave) $('#mCont').onclick = () => { fullscreen(true); startGame(loadSave() || G); };
@@ -754,9 +755,10 @@ function showMenu(hasSave) {
   $('#mGo').onclick = () => {
     if (readIdx().length >= MAX_SLOTS) { toast(`En çok ${MAX_SLOTS} şehir kaydedilebilir. Kayıtlar'dan birini sil.`); return; }
     save();      // açık şehri kaybetme
-    const g = VL.newGame({ seed: (Date.now() % 9973) + 1, map: mapSel }); g.slot = newSlotId();
+    const g = VL.newGame({ seed: (Date.now() % 9973) + 1, map: mapSel, year: yearSel }); g.slot = newSlotId();
     fullscreen(true); startGame(g);
   };
+  m.querySelector('.years').onclick = (e) => { const b = e.target.closest('[data-year]'); if (!b || b.disabled) return; yearSel = +b.dataset.year; m.querySelectorAll('.years .chip').forEach(c => c.classList.toggle('on', c === b)); $('#yearNote').textContent = years.find(x => x[0] === yearSel)[2]; };
   m.querySelector('.cards').onclick = (e) => { const b = e.target.closest('[data-map]'); if (!b) return; mapSel = b.dataset.map; m.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c === b)); $('#mapNote').textContent = maps.find(x => x[0] === mapSel)[2]; };
 }
 
