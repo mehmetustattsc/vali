@@ -24,7 +24,7 @@ const RES_NAME = { kereste: 'Kereste', tas: 'Taş', komur: 'Kömür', demir: 'De
    1850 dönemi için gerçeğe yakın oranlar: nüfusun ~%60'ı tarımla geçinir, kişi başı ayda 1 birim gıda. */
 const B = {
   startMoney: 4000,
-  cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3, rail: 30, railBridge: 220, levee: 25, overpass: 90 },
+  cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3, rail: 30, railBridge: 220, levee: 25, overpass: 90, tunnel: 70, tunnelRail: 100 },
   upkeep: { road: 0.6, bridge: 3, gov: 12, rail: 0.8, levee: 0.2 },   // aylık
   ranchFood: 480,                    // hayvan çiftliği: yaklaşık 50 tarla karesinin gıdası
   millBoost: 3,                   // değirmenin çevresindeki tarlalarda verim artışı
@@ -583,12 +583,12 @@ function quote(G, tool, cells) {
     let ok = true, cost = 0;
     if (G.own && !G.own[i]) { res.bad.push(i); res.err = 'Bu arazi henüz şehrin değil: Arazi aracıyla satın al'; continue; }
     if (tool === 'road') {
-      if (G.r[i] || t === T_ROCK || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;   // boş alanın üstünden geçer, binayı yıkmaz
-      else cost = t === T_WATER ? B.cost.bridge : G.rl[i] ? B.cost.overpass : t === T_FOREST ? B.cost.roadForest : B.cost.road;
+      if (G.r[i] || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;   // boş alanın üstünden geçer, binayı yıkmaz; dağda tünel olur
+      else cost = t === T_ROCK ? B.cost.tunnel : t === T_WATER ? B.cost.bridge : G.rl[i] ? B.cost.overpass : t === T_FOREST ? B.cost.roadForest : B.cost.road;
     } else if (tool === 'rail') {
       if (!G.fx.rail) { ok = false; res.err = 'Demiryolu görevi bitince açılır'; }
-      else if (G.rl[i] || t === T_ROCK || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;     // yolla kesişebilir (hemzemin geçit)
-      else cost = t === T_WATER ? B.cost.railBridge : G.r[i] ? B.cost.overpass : B.cost.rail;
+      else if (G.rl[i] || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;     // yolla kesişebilir (hemzemin geçit)
+      else cost = t === T_ROCK ? B.cost.tunnelRail : t === T_WATER ? B.cost.railBridge : G.r[i] ? B.cost.overpass : B.cost.rail;
     } else if (tool === 'res' || tool === 'farm' || tool === 'com') {
       const zt = tool === 'res' ? 1 : tool === 'farm' ? 2 : 3;
       if (!isLand(t) || G.r[i] || G.rl[i] || G.sv[i] || G.z[i] === zt) ok = false;

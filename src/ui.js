@@ -67,7 +67,7 @@ const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="
 const TOOL_INFO = {
   pan: { name: 'Gez', tip: 'Haritada gezin, bir yere dokunup bilgisini gör.' },
   gov: { name: 'Valilik', tip: 'Şehrin merkezi. 2×2 alan kaplar, bir kez kurulur.' },
-  road: { name: 'Yol', tip: 'Başlangıca, sonra bitişe dokun ya da basılı tutup sürükle. Nehirde köprü, rayın üstünde üst geçit olur.' },
+  road: { name: 'Yol', tip: 'Başlangıca, sonra bitişe dokun ya da basılı tutup sürükle. Nehirde köprü, rayın üstünde üst geçit, dağda tünel olur.' },
   res: { name: 'Konut', tip: 'İki köşeye dokun ya da basılı tutup sürükle. Evler talebe göre kendiliğinden yapılır.' },
   farm: { name: 'Tarla', tip: 'Tarla alanı: şehri besler, fazlası satılır.' },
   com: { name: 'Ticaret', tip: 'Dükkân ve atölyeler: işçilere iş, şehre ticaret vergisi.' },
@@ -472,11 +472,11 @@ function tileInfo(i) {
   const markNote = mk ? `<p class="note neg">${mk.k === 'burn' ? 'Yangın yeri: binalar zamanla yeniden yapılır.' : 'Sel suları çekiliyor.'}</p>` : '';
   if (G.rl && G.rl[i] && !G.r[i]) {
     if (G.rl[i] === 2) return { title: 'Ana demiryolu hattı', html: '<p class="note">Komşu şehre giden hat. İstasyonu buraya raylarla bağla.</p>' };
-    return { title: t === VL.T_WATER ? 'Demiryolu köprüsü' : 'Ray', html: `${row('Aylık bakım', VL.B.upkeep.rail)}${row('İstasyona bağlı', yes(c.rnet[i]))}${row('Ana hatta bağlı', yes(c.railOut))}` };
+    return { title: t === VL.T_WATER ? 'Demiryolu köprüsü' : t === VL.T_ROCK ? 'Demiryolu tüneli' : 'Ray', html: `${row('Aylık bakım', VL.B.upkeep.rail)}${row('İstasyona bağlı', yes(c.rnet[i]))}${row('Ana hatta bağlı', yes(c.railOut))}` };
   }
   if (G.r[i]) {
     if (G.r[i] === 2) return { title: 'Dış yol', html: '<p class="note">Kasabaya göçmenler ve tüccarlar bu yoldan gelir. Şehrin yol ağını buraya bağla.</p>' };
-    return { title: t === VL.T_WATER ? 'Köprü' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}` };
+    return { title: t === VL.T_WATER ? 'Köprü' : t === VL.T_ROCK ? 'Tünel' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}` };
   }
   if (z) {
     const building = lv > 0 && G.pg[i] < 1, name = lv ? LV_NAME[z][lv] : ZONE_NAME[z];

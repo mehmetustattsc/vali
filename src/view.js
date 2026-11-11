@@ -207,7 +207,7 @@ export function createView(canvas, G0) {
     P.bridge.count = 0;
     flatMesh('road', roadMat, (q, quad4) => {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        const i = y * N + x, onWater = G.t[i] === V.T_WATER, over = !onWater && G.r[i] && G.rl && G.rl[i];   // ray üstünden üst geçit
+        const i = y * N + x, onWater = G.t[i] === V.T_WATER, over = !onWater && G.t[i] !== V.T_ROCK && G.r[i] && G.rl && G.rl[i];   // ray üstünden üst geçit
         if (G.r[i]) {
           cc.set(onWater || over ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
           const L = linksOf(G.r, x, y, G.r[i] === 2);
@@ -216,6 +216,7 @@ export function createView(canvas, G0) {
           else if (over) overpass(x, y, L);
           else rampTo(q, x, y, G.r, 0.29, 0.014, cc);
         }
+        portals(x, y);
         if (G.rl && G.rl[i]) {
           const L = linksOf(G.rl, x, y, G.rl[i] === 2), y0 = onWater ? DECK + 0.012 : 0.022;
           band(q, quad4, W(x), W(y), L, 0.22, y0, onWater ? wood : rail);
@@ -237,6 +238,17 @@ export function createView(canvas, G0) {
       if (kind === 'iron') put(P.bridge, cx + ox, DECK + 0.1, cz + oz, 1.0, 0.03, 0.03, along, iron);
     }
     if ((x + y) % 2 === 0) put(P.bridge, cx, -0.42, cz, 0.24, DECK + 0.35, 0.6, along, kind === 'iron' ? '#7d7366' : stone);   // ayak
+  }
+  /* Tünel ağzı: dağın içine giren yol ya da rayın kayaya değdiği kenarda taş kemerli kapı */
+  function portals(x, y) {
+    const i = y * N + x; if (G.t[i] === V.T_ROCK || !(G.r[i] || (G.rl && G.rl[i]))) return;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const j = ny * N + nx; if (G.t[j] !== V.T_ROCK || !((G.r[i] && G.r[j]) || (G.rl && G.rl[i] && G.rl[j]))) continue;
+      const ex = W(x) + dx * 0.47, ez = W(y) + dy * 0.47, rot = dx ? Math.PI / 2 : 0;
+      put(P.bridge, ex, 0, ez, 0.82, 0.46, 0.08, rot, '#8f8470');
+      put(P.bridge, ex - dx * 0.01, 0, ez - dy * 0.01, 0.56, 0.36, 0.09, rot, '#1e1b18');
+    }
   }
   /* Üst geçit: yol, rayın üstünden taş ayaklı bir köprüyle geçer; ray altından akar */
   function overpass(x, y, L) {
