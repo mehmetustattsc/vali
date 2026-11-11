@@ -209,9 +209,11 @@ export function createView(canvas, G0) {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
         const i = y * N + x, onWater = G.t[i] === V.T_WATER, over = !onWater && G.t[i] !== V.T_ROCK && G.r[i] && G.rl && G.rl[i];   // ray üstünden üst geçit
         if (G.r[i]) {
-          cc.set(onWater || over ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
-          const L = linksOf(G.r, x, y, G.r[i] === 2);
-          band(q, quad4, W(x), W(y), L, 0.29, onWater || over ? DECK + 0.002 : 0.014, cc);
+          const mw = G.r[i] === 3;
+          cc.set(mw ? '#4f4d4a' : onWater || over ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
+          const L = linksOf(G.r, x, y, G.r[i] >= 2);
+          band(q, quad4, W(x), W(y), L, mw ? 0.42 : 0.29, onWater || over ? DECK + 0.002 : 0.014, cc);
+          if (mw) { band(q, quad4, W(x), W(y), L, 0.02, 0.02, new THREE.Color('#f2d27a')); band(q, quad4, W(x), W(y), L, 0.012, 0.019, new THREE.Color('#e8e4da'), [-0.33, 0.33]); }
           if (onWater) bridgeTile(x, y, L, 'stone');
           else if (over) overpass(x, y, L);
           else rampTo(q, x, y, G.r, 0.29, 0.014, cc);
@@ -693,12 +695,12 @@ export function createView(canvas, G0) {
       Bx(0, 1.0, -0.3, 1.94, 0.06, 0.6, '#8d8f8a'); Bx(0, 0.1, 0.35, 1.9, 0.04, 1.1, PAL.waterLit);
       for (const a of [-0.6, 0, 0.6]) Bx(a, 0.3, -0.04, 0.2, 0.5, 0.02, '#e8eef2');
       Bx(0.6, 0.1, 0.6, 0.6, 0.45, 0.5, '#b7b2a8'); put(P.roof, cx + 0.6, 0.55, cz + 0.6, 0.64, 0.16, 0.54, 0, '#5f6f78');
-    } else if (m.pid === 'motorway') {
-      put(P.cyl, cx, 0, cz, 1.9, 0.03, 1.9, 0, '#7f8f55');
-      Bx(0, 0.03, 0, 1.96, 0.04, 0.5, '#5e5c59'); Bx(0, 0.25, 0, 0.5, 0.04, 1.96, '#5e5c59');
-      for (const a of [-0.6, 0.6]) Bx(0, 0.03, a * 0.3, 0.02, 0.22, 0.02, '#a8a49c');
-      for (const b of [-0.3, 0.3]) Bx(b, 0.03, 0, 0.08, 0.22, 0.4, '#a8a49c');
-      Bx(0, 0.08, 0, 1.9, 0.01, 0.03, '#f2d27a'); Bx(0, 0.3, 0, 0.03, 0.01, 1.9, '#f2d27a');
+    } else if (m.pid === 'motorway') {      // karayolları bakım merkezi: garaj, kamyonlar, tuz yığını
+      Bx(0, 0, 0, 1.94, 0.03, 1.94, '#8d8a84');
+      Bx(-0.3, 0.03, -0.35, 1.2, 0.6, 0.9, '#d8a23a'); put(P.roof, cx - 0.3, 0.63, cz - 0.35, 1.26, 0.2, 0.96, 0, '#5f5852');
+      for (const a of [-0.65, -0.3, 0.05]) Bx(a, 0.03, 0.11, 0.28, 0.4, 0.012, '#3b3a38');
+      for (const [a, b] of [[0.55, 0.35], [0.55, 0.75]]) { Bx(a, 0.03, b, 0.5, 0.16, 0.22, '#e07a1f'); Bx(a + 0.22, 0.03, b, 0.14, 0.26, 0.22, '#e07a1f'); }
+      put(P.cone, cx - 0.55, 0.03, cz + 0.6, 0.5, 0.3, 0.5, 0, '#e8e4da');
     } else if (m.pid === 'airport') {
       Bx(0, 0, 0, 1.96, 0.02, 1.96, '#8fae5e'); Bx(0.25, 0.02, 0, 0.5, 0.02, 1.96, '#5e5c59');
       for (let k = -0.8; k <= 0.8; k += 0.4) Bx(0.25, 0.04, k, 0.04, 0.005, 0.18, '#f4efe2');

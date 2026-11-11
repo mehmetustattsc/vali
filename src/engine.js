@@ -118,7 +118,7 @@ const LANDMARK = {
   sewer: { name: 'Pompa istasyonu', jobs: 12, text: 'Kanalizasyon şebekesi: salgın riski büyük ölçüde düşer, sağlık artar.' },
   univ: { name: 'Darülfünun', jobs: 30, text: 'Bütün şehir eğitim kapsamına girer.' },
   dam: { name: 'Baraj', jobs: 20, text: '2500 birim elektrik üretir ve bütün şehri selden korur.' },
-  motorway: { name: 'Otoyol kavşağı', jobs: 10, text: 'Bölgenin talebi her ay hızla artar; ticaret ve göç güçlenir.' },
+  motorway: { name: 'Karayolları bakım merkezi', jobs: 10, text: 'Asıl etki batı kenarındaki otoyoldadır: şehrin yolları otoyola bağlanınca bölge talebi her ay çok daha hızlı artar.' },
   airport: { name: 'Havalimanı', jobs: 60, text: 'Turist ve tüccar getirir: büyük ziyaretçi geliri ve bölge talebi.' },
   stadium: { name: 'Stadyum', jobs: 30, text: 'Bütün şehir eğlence kapsamına girer; maç günleri bilet geliri getirir.' },
   victory: { name: 'Zafer anıtı', jobs: 4, text: 'Şehir genelinde kalıcı memnuniyet; geniş meydan etkisi ve ziyaretçi geliri.' },
@@ -151,7 +151,7 @@ const PROJECTS = [
   { id: 'dam', year: 1931, name: 'Baraj ve hidroelektrik', desc: 'Nehri bir barajla düzenle, şehre büyük elektrik sağla.', needs: { cimento: 1000, demir: 500, tas: 600, para: 15000 }, years: 6,
     reward: '2500 birim elektrik ve bütün şehirde selden korunma.' },
   { id: 'motorway', year: 1941, name: 'Otoyol bağlantısı', desc: 'Şehri ülkenin yeni otoyol ağına bağla.', needs: { cimento: 1400, demir: 400, para: 18000 }, years: 6,
-    reward: 'Bölge talebi her ay çok daha hızlı artar.' },
+    reward: 'Batı kenarında komşu şehirlere giden otoyol açılır; şehrin yollarını ona bağlayınca bölge talebi çok daha hızlı artar.' },
   { id: 'airport', year: 1951, name: 'Havalimanı', desc: 'Şehre yolcu ve kargo uçakları için bir havalimanı kazandır.', needs: { cimento: 1800, demir: 700, para: 25000 }, years: 6,
     reward: 'Büyük ziyaretçi geliri, bölge talebinde artış.' },
   { id: 'stadium', year: 1961, name: 'Şehir stadyumu', desc: 'Kırk bin kişilik bir stadyum inşa et.', needs: { cimento: 1600, demir: 600, kereste: 300, para: 22000 }, years: 5,
@@ -396,7 +396,7 @@ function rebuild(G) {
   // Yol ağı: Valiliğe değen yollardan başlayan arama
   const q = [];
   if (G.gov) for (const i of govTiles(G)) for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); }
-  while (q.length) { const i = q.pop(); if (G.r[i] === 2) c.outside = true; for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); } }
+  while (q.length) { const i = q.pop(); if (G.r[i] === 2) c.outside = true; if (G.r[i] === 3) { c.outside = true; c.motorOut = true; } for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); } }
   for (let i = 0; i < n; i++) {
     if (G.r[i] === 1) { if (G.t[i] === T_WATER) c.bridges++; else c.roads++; }
     if (!G.r[i] && G.t[i] !== T_WATER) for (const j of neigh4(G, i)) if (c.net[j]) { c.served[i] = 1; break; }
@@ -603,7 +603,7 @@ function quote(G, tool, cells) {
       else cost = d.cost;
     } else if (tool === 'bulldoze') {
       const s = G.sv[i];
-      if (G.r[i] === 2 || G.rl[i] === 2 || s === S_GOV || s === S_SITE || s === S_LANDMARK || !(G.r[i] || G.rl[i] || G.z[i] || s)) ok = false; else cost = B.cost.bulldoze;
+      if (G.r[i] >= 2 || G.rl[i] === 2 || s === S_GOV || s === S_SITE || s === S_LANDMARK || !(G.r[i] || G.rl[i] || G.z[i] || s)) ok = false; else cost = B.cost.bulldoze;
     } else ok = false;
     if (ok) { res.ok.push(i); res.cost += cost; } else res.bad.push(i);
   }
@@ -902,7 +902,7 @@ function monthEnd(G) {
   const netMoney = sum(inc) - sum(exp);
   if (G.gov) G.money += netMoney;
   // Bölge talebi: memnun, itibarlı ve bağlantılı şehir çevresinde ün kazanır
-  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (G.fx.motorway ? 4 : 0) + (c.air ? 3 : 0));
+  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0));
   G.reg = Math.min(G.reg, 150 + P * 0.5);      // bölge talebi şehrin büyüklüğüyle sınırlı
   G.last = { inc, exp, net: netMoney };
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
@@ -963,7 +963,20 @@ function monthEnd(G) {
 }
 
 /* ---------- on yıllık görevler ---------- */
+/* Batı kenarından komşu şehirlere giden otoyol (dış yolun birkaç sıra kuzeyi ya da güneyi) */
+function addMotorStub(G) {
+  if (G.motorEntry) return;
+  const N = G.N, e = G.entry.y;
+  const okRow = (y) => y > 1 && y < N - 2 && [0, 1, 2, 3, 4, 5].every(k => { const i = idx(G, k, y); return G.t[i] !== T_WATER && !G.r[i] && !G.rl[i] && !isMultiCode(G.sv[i]) && G.sv[i] !== S_GOV && (!G.own || G.own[i]); });
+  const y = [e - 3, e - 4, e + 4, e - 5, e + 5, e - 6, e + 6, e - 8, e + 8].find(okRow);
+  if (y == null) return;
+  for (let k = 0; k <= 5; k++) { const i = idx(G, k, y); clearTile(G, i); G.sv[i] = 0; G.t[i] = T_GRASS; G.h[i] = 0; G.r[i] = 3; }
+  G.motorEntry = { x: 0, y }; G.tv = (G.tv || 0) + 1; touch(G);
+  msg(G, 'motor', 'Batı kenarında otoyol açıldı. Şehrin yollarını otoyola bağla.');
+}
+
 function projects(G, c) {
+  if (G.fx.motorway && !G.motorEntry) addMotorStub(G);      // eski kayıtlar
   const y = yearOf(G);
   // Yeni görev: yılı geldiyse ve şehir dış yola bağlıysa
   if (!G.proj && G.projNext < PROJECTS.length && y >= PROJECTS[G.projNext].year && c.outside) {
@@ -1000,6 +1013,7 @@ function finishProject(G, m) {
   const half = P.late ? 0.5 : 1;
   G.fx[p.id] = 1;
   if (p.id === 'rail') { G.reg += 60 * half; addRailStub(G); }
+  if (p.id === 'motorway') addMotorStub(G);
   if (p.id === 'quay') G.reg += 30 * half;
   G.done.push({ id: p.id, year: yearOf(G), late: P.late });
   G.proj = null; G.projNext++;

@@ -238,6 +238,7 @@ function tutorialHint() {
   if (!c.zones[1].length || !c.zones[2].length) return 'Yolların yanına Konut (yeşil) ve Tarla (sarı) alanı çiz.';
   if (T.P >= 25 && !c.cnt.fountain) return 'Hizmet menüsünden konutların arasına bir Çeşme kur: su olmadan evler büyümez.';
   if (T.P >= 60 && !c.zones[3].length) return 'Kasaba büyüyor: yol kenarına Ticaret (mavi) alanı çiz.';
+  if (G.motorEntry && !c.motorOut) return 'Batı kenarındaki otoyolu şehrin yollarına bağla.';
   if (G.fx && G.fx.rail && !c.railOut) return 'Ulaşım menüsünden Ray seç: istasyonu batıdaki ana demiryolu hattına bağla.';
   if (G.proj && !G.proj.site) return `Görev: ${VL.PROJECTS[G.proj.i].name}. Üretim menüsünden kaynak topla ve Görev panelinden şantiye kur.`;
   return '';
@@ -475,6 +476,7 @@ function tileInfo(i) {
     return { title: t === VL.T_WATER ? 'Demiryolu köprüsü' : t === VL.T_ROCK ? 'Demiryolu tüneli' : 'Ray', html: `${row('Aylık bakım', VL.B.upkeep.rail)}${row('İstasyona bağlı', yes(c.rnet[i]))}${row('Ana hatta bağlı', yes(c.railOut))}` };
   }
   if (G.r[i]) {
+    if (G.r[i] === 3) return { title: 'Otoyol', html: `${row('Şehre bağlı', yes(c.motorOut))}<p class="note">Komşu şehirlere giden otoyol. Şehrin yollarını buraya bağla; bağlanınca bölge talebi her ay çok daha hızlı artar.</p>` };
     if (G.r[i] === 2) return { title: 'Dış yol', html: '<p class="note">Kasabaya göçmenler ve tüccarlar bu yoldan gelir. Şehrin yol ağını buraya bağla.</p>' };
     return { title: t === VL.T_WATER ? 'Köprü' : t === VL.T_ROCK ? 'Tünel' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}` };
   }
