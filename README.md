@@ -59,6 +59,12 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - Her grubun duyarlılığı farklı (`GW` tablosu): esnaf asayiş ve ulaşım, eğitimliler eğitim ve meydan, varlıklılar vergi, kirlilik ve eğlence.
 - Üretim tesislerinde ve çöp alanında 3 seviye yükseltme; hayvan çiftliği; değirmen +%300.
 
+## Sürüm 0.9: Bilgi çağı (1970–2010) ve yeşil çağ (2010–2100)
+- Yeni binalar: metro istasyonu ve nükleer santral (1975), geri dönüşüm tesisi (1985), teknopark (1990), güneş tarlası ve rüzgâr türbini (2010), dikey tarım kulesi (2030), füzyon santrali (2060).
+- 1980'den sonra gökdelen (konut) ve ofis kulesi (ticaret).
+- On yeni görev (1971–2061): metro hattı, OSB, teknik üniversite, fuar merkezi, akıllı şehir merkezi, hızlı tren, iklim parkı, yenilenebilir enerji, araştırma merkezi, kent ormanı.
+- 2000 ve 2026 başlangıç yılları açıldı.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

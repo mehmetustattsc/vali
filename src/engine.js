@@ -14,7 +14,8 @@ const Z_NONE = 0, Z_RES = 1, Z_FARM = 2, Z_COM = 3;
 // Tekil binalar (G.sv). 9 = Valilik (eski kayıtlarla uyum için değişmez)
 const S_NONE = 0, S_FOUNTAIN = 1, S_POLICE = 2, S_SCHOOL = 3, S_CLINIC = 4, S_LUMBER = 5, S_QUARRY = 6, S_COAL = 7, S_IRON = 8,
   S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12, S_SMALLSQ = 13, S_BIGSQ = 14, S_HIPPO = 15, S_FIRE = 16, S_LEVEE = 17,
-  S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28, S_RANCH = 29, S_BUS = 30, S_CEMENT = 31, S_LYCEUM = 32, S_HOSPITAL = 33, S_GAS = 34;
+  S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28, S_RANCH = 29, S_BUS = 30, S_CEMENT = 31, S_LYCEUM = 32, S_HOSPITAL = 33, S_GAS = 34,
+  S_METRO = 35, S_RECYCLE = 36, S_NUCLEAR = 37, S_TECH = 38, S_SOLAR = 39, S_WIND = 40, S_VFARM = 41, S_FUSION = 42;
 // Maden yatakları (G.dep)
 const D_COAL = 1, D_IRON = 2;
 const RES = ['kereste', 'tas', 'komur', 'demir', 'cimento'];
@@ -38,9 +39,9 @@ const B = {
   power: { plant: 900, hydro: 450, landmark: 1500, coal: 20, factoryUse: 150, tramUse: 30 },   // elektrik birimi yaklaşık bir kişinin tüketimi
   factory: { income: 220, coal: 8, iron: 8 },
   dumpCap: 2500,                      // bir çöp alanının hizmet ettiği kişi
-  resCap: [0, 6, 14, 28, 56, 110],            // konut seviyesine göre kişi
+  resCap: [0, 6, 14, 28, 56, 110, 220],            // konut seviyesine göre kişi
   farmJobs: [0, 6, 11],              // tarla seviyesine göre çiftçi aile
-  comJobs: [0, 7, 16, 30, 60, 110],           // ticaret seviyesine göre işçi aile
+  comJobs: [0, 7, 16, 30, 60, 110, 220],           // ticaret seviyesine göre işçi aile
   govJobs: 12,
   buildDays: { 1: 5, 2: 4, 3: 8 },   // bölge türüne göre inşaat süresi (gün)
   wage: { c: 2, i: 2.6, e: 3.2, o: 4, v: 9 },            // kişi başı aylık kazanç, vergi bunun üzerinden
@@ -78,6 +79,16 @@ const SVD = {
   hospital: { code: S_HOSPITAL, name: 'Hastane', edu: true, cost: 1400, upkeep: 25, radius: 13, cover: 'clinic', jobs: 24, year: 1930 },
   cement: { code: S_CEMENT, name: 'Çimento fabrikası', cost: 900, jobs: 20, out: 'cimento', rate: 30, need: 'rock', year: 1930 },
   gas: { code: S_GAS, name: 'Doğalgaz santrali', cost: 4000, upkeep: 60, jobs: 16, w: 2, h: 2, year: 1955, dirty: 2 },
+  // 1970 sonrası: bilgi çağı
+  metro: { code: S_METRO, name: 'Metro istasyonu', cost: 3000, upkeep: 22, radius: 12, cover: 'transit', jobs: 12, year: 1975 },
+  nuclear: { code: S_NUCLEAR, name: 'Nükleer santral', cost: 15000, upkeep: 150, jobs: 60, w: 2, h: 2, year: 1975 },
+  recycle: { code: S_RECYCLE, name: 'Geri dönüşüm tesisi', cost: 5000, upkeep: 30, jobs: 20, w: 2, h: 2, year: 1985, dirty: 1 },
+  tech: { code: S_TECH, name: 'Teknopark', edu: true, cost: 9000, upkeep: 30, jobs: 120, w: 3, h: 2, year: 1990 },
+  // 2010 sonrası: yeşil çağ
+  solar: { code: S_SOLAR, name: 'Güneş tarlası', cost: 6000, upkeep: 12, jobs: 6, w: 2, h: 2, year: 2010 },
+  wind: { code: S_WIND, name: 'Rüzgâr türbini', cost: 2200, upkeep: 4, jobs: 2, year: 2010 },
+  vfarm: { code: S_VFARM, name: 'Dikey tarım kulesi', cost: 7000, upkeep: 20, jobs: 25, year: 2030 },
+  fusion: { code: S_FUSION, name: 'Füzyon santrali', cost: 60000, upkeep: 400, jobs: 120, w: 2, h: 2, year: 2060 },
   ranch: { code: S_RANCH, name: 'Hayvan çiftliği', cost: 2500, upkeep: 15, jobs: 30, w: 3, h: 2, minP: 300, needFarm: true },
   // 1890 sonrası
   power: { code: S_POWER, name: 'Kömür santrali', cost: 1500, upkeep: 20, jobs: 14, w: 2, h: 2, year: 1890, dirty: 3 },
@@ -108,7 +119,7 @@ const GW = {
   v: { tax: 1.6, safety: 1.5, square: 1.6, fun: 1.5, dirt: 2.5, edu: 1.2, power: 1.3 },
 };
 const RADM = [0, 1, 1.35, 1.7];      // hizmet binalarında seviyeye göre etki yarıçapı
-const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas'];
+const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas', 'metro', 'nuclear', 'recycle', 'tech', 'solar', 'wind', 'vfarm', 'fusion'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
@@ -120,12 +131,22 @@ const LANDMARK = {
   dam: { name: 'Baraj', jobs: 20, text: '2500 birim elektrik üretir ve bütün şehri selden korur.' },
   motorway: { name: 'Karayolları bakım merkezi', jobs: 10, text: 'Asıl etki batı kenarındaki otoyoldadır: şehrin yolları otoyola bağlanınca bölge talebi her ay çok daha hızlı artar.' },
   airport: { name: 'Havalimanı', jobs: 60, text: 'Turist ve tüccar getirir: büyük ziyaretçi geliri ve bölge talebi.' },
+  metroline: { name: 'Metro merkezi', jobs: 40, text: 'Bütün şehir ulaşım kapsamına girer.' },
+  osb: { name: 'Organize sanayi bölgesi', jobs: 200, text: 'Fabrikalar %50 daha çok gelir getirir, bölge talebi artar.' },
+  techuni: { name: 'Teknoloji üniversitesi', jobs: 80, edu: true, text: 'Bütün şehir eğitim kapsamına girer, eğitimlilere iş verir.' },
+  expo: { name: 'Kongre ve fuar merkezi', jobs: 60, text: 'Büyük ziyaretçi geliri getirir.' },
+  smart: { name: 'Akıllı şehir merkezi', jobs: 30, edu: true, text: 'Bütün hizmet binalarının gideri %25 azalır.' },
+  hsr: { name: 'Hızlı tren garı', jobs: 50, text: 'Büyük şehirlere hızlı bağlantı: bölge talebi her ay çok daha hızlı artar.' },
+  climate: { name: 'İklim uyum parkı', jobs: 20, text: 'Bütün şehir selden korunur; geniş meydan etkisi.' },
+  renew: { name: 'Enerji merkezi', jobs: 40, text: '8000 birim temiz elektrik üretir.' },
+  research: { name: 'Araştırma merkezi', jobs: 100, edu: true, text: 'Eğitimlilere iş, şehre itibar ve memnuniyet.' },
+  forest: { name: 'Kent ormanı', jobs: 15, text: 'Şehrin büyük bölümünde meydan ve eğlence etkisi, kalıcı memnuniyet.' },
   stadium: { name: 'Stadyum', jobs: 30, text: 'Bütün şehir eğlence kapsamına girer; maç günleri bilet geliri getirir.' },
   victory: { name: 'Zafer anıtı', jobs: 4, text: 'Şehir genelinde kalıcı memnuniyet; geniş meydan etkisi ve ziyaretçi geliri.' },
   tower: { name: 'Saat kulesi', jobs: 6, text: 'Geniş bir alanda meydan etkisi verir; ziyaretçiler her ay hazineye gelir bırakır.' },
 };
 const isMultiCode = (code) => code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK ||
-  code === S_PSTATION || code === S_FSTATION || code === S_PORT || code === S_POWER || code === S_FACTORY || code === S_DUMP || code === S_RANCH || code === S_GAS;
+  code === S_PSTATION || code === S_FSTATION || code === S_PORT || code === S_POWER || code === S_FACTORY || code === S_DUMP || code === S_RANCH || code === S_GAS || code === S_NUCLEAR || code === S_RECYCLE || code === S_TECH || code === S_SOLAR || code === S_FUSION;
 const CODE2KEY = {}; for (const k in SVD) CODE2KEY[SVD[k].code] = k;
 
 /* On yıllık görevler: merkezden gelir, şehirden kaynak toplanıp şantiyeye taşınır */
@@ -156,6 +177,18 @@ const PROJECTS = [
     reward: 'Büyük ziyaretçi geliri, bölge talebinde artış.' },
   { id: 'stadium', year: 1961, name: 'Şehir stadyumu', desc: 'Kırk bin kişilik bir stadyum inşa et.', needs: { cimento: 1600, demir: 600, kereste: 300, para: 22000 }, years: 5,
     reward: 'Bütün şehir eğlence kapsamına girer, bilet geliri.' },
+  // Bilgi çağı (1970–2010)
+  { id: 'metroline', year: 1971, name: 'Metro hattı', desc: 'Şehrin altına ilk metro hattını kaz.', needs: { cimento: 2200, demir: 1000, para: 40000 }, years: 6, reward: 'Bütün şehir ulaşım kapsamına girer.' },
+  { id: 'osb', year: 1981, name: 'Organize sanayi bölgesi', desc: 'Sanayiyi tek bir planlı bölgede topla.', needs: { cimento: 1800, demir: 1400, para: 35000 }, years: 6, reward: 'Fabrikalar %50 daha çok gelir getirir, 200 kişiye iş.' },
+  { id: 'techuni', year: 1991, name: 'Teknoloji üniversitesi', desc: 'Mühendis yetiştirecek bir üniversite kur.', needs: { cimento: 2000, demir: 700, para: 45000 }, years: 6, reward: 'Bütün şehir eğitim kapsamına girer.' },
+  { id: 'expo', year: 2001, name: 'Kongre ve fuar merkezi', desc: 'Uluslararası fuarlar için büyük bir merkez inşa et.', needs: { cimento: 2400, demir: 900, para: 50000 }, years: 5, reward: 'Büyük ziyaretçi geliri.' },
+  // Yeşil çağ ve gelecek (2010–2100)
+  { id: 'smart', year: 2011, name: 'Akıllı şehir altyapısı', desc: 'Şehrin hizmetlerini tek bir dijital merkezden yönet.', needs: { demir: 1200, cimento: 1500, para: 60000 }, years: 5, reward: 'Bütün hizmet binalarının gideri %25 azalır.' },
+  { id: 'hsr', year: 2021, name: 'Hızlı tren bağlantısı', desc: 'Şehri hızlı tren ağına bağla.', needs: { demir: 2200, cimento: 2200, para: 80000 }, years: 6, reward: 'Bölge talebi her ay çok daha hızlı artar.' },
+  { id: 'climate', year: 2031, name: 'İklim uyum parkı', desc: 'Sıcak dalgalarına ve sellere karşı şehri koru.', needs: { cimento: 2600, kereste: 800, para: 70000 }, years: 6, reward: 'Bütün şehir selden korunur, geniş meydan etkisi.' },
+  { id: 'renew', year: 2041, name: 'Yenilenebilir enerji merkezi', desc: 'Şehrin elektriğini tamamen temiz kaynaklardan üret.', needs: { demir: 1800, cimento: 1800, para: 90000 }, years: 6, reward: '8000 birim temiz elektrik.' },
+  { id: 'research', year: 2051, name: 'Araştırma merkezi', desc: 'Geleceğin teknolojilerini geliştirecek bir merkez kur.', needs: { demir: 1500, cimento: 2500, para: 100000 }, years: 6, reward: 'Eğitimlilere iş, itibar ve memnuniyet.' },
+  { id: 'forest', year: 2061, name: 'Kent ormanı', desc: 'Şehrin ortasına büyük bir orman ve gök bahçeleri kazandır.', needs: { kereste: 1500, cimento: 1200, para: 80000 }, years: 6, reward: 'Şehrin büyük bölümünde kalıcı memnuniyet.' },
 ];
 
 /* ---------- yardımcılar ---------- */
@@ -219,7 +252,7 @@ function newGame(opts) {
 /* Geç başlangıç (1900, 1950): önceki dönemlerin görevleri tamamlanmış sayılır, kalıcı etkileri ve bağlantıları gelir */
 function setupEra(G) {
   const y = G.startYear; if (y <= 1850) return;
-  G.money = y >= 1950 ? 30000 : 12000;
+  G.money = y >= 2026 ? 150000 : y >= 2000 ? 80000 : y >= 1950 ? 30000 : 12000;
   while (G.projNext < PROJECTS.length && PROJECTS[G.projNext].year < y) { const p = PROJECTS[G.projNext]; G.done.push({ id: p.id, year: p.year, late: 0, pre: 1 }); G.fx[p.id] = 1; G.projNext++; }
   if (G.fx.rail) addRailStub(G);
   if (G.fx.motorway) addMotorStub(G);
@@ -453,13 +486,13 @@ function rebuild(G) {
     unit(key, tiles[0], tiles.some(j => c.served[j]), idx(G, m.x + (m.w >> 1), m.y + (m.h >> 1)));
   }
   // Görev anıtları da çalışır: iş verir ve şehre hizmet eder
-  c.tourism = 0; c.air = 0; c.stadium = 0;
+  c.tourism = 0; c.air = 0; c.stadium = 0; c.expo = 0; c.hsr = 0;
   c.hippos = G.multi.filter(m => m.k === S_HIPPO && multiTiles(G, m).some(j => c.served[j])).length;
   for (const m of G.multi) {
     if (m.k !== S_LANDMARK) continue;
     const tiles = multiTiles(G, m), ok = tiles.some(j => c.served[j]), ctr = idx(G, m.x + 1, m.y + 1), L = LANDMARK[m.pid];
     if (!L) continue;
-    if (ok) c[m.pid === 'univ' ? 'eduJobs' : 'svcJobs'] += L.jobs;
+    if (ok) c[L.edu || m.pid === 'univ' ? 'eduJobs' : 'svcJobs'] += L.jobs;
     if (m.pid === 'aqueduct') around(G, ctr, 9, j => { c.clinic[j] = 1; });                 // su idaresi: temiz su, sağlık
     if (m.pid === 'rail') { around(G, ctr, 9, j => { c.transit[j] = 1; }); around(G, ctr, 8, j => { c.freight[j] = 1; }); }
     if (m.pid === 'quay') c.cnt.port = (c.cnt.port || 0) + 1;                                 // hazır nehir limanı
@@ -470,6 +503,13 @@ function rebuild(G) {
     if (m.pid === 'dam') { if (ok) c.act.lmDam = 1; c.flood.fill(1); }
     if (m.pid === 'airport' && ok) c.air = 1;
     if (m.pid === 'stadium') { c.fun.fill(1); if (ok) c.stadium = 1; }
+    if (m.pid === 'metroline') c.transit.fill(1);
+    if (m.pid === 'techuni') c.school.fill(1);
+    if (m.pid === 'climate') { c.flood.fill(1); around(G, ctr, 14, j => { c.square[j] = 1; }); }
+    if (m.pid === 'renew' && ok) c.act.lmRenew = 1;
+    if (m.pid === 'expo' && ok) c.expo = 1;
+    if (m.pid === 'hsr' && ok) c.hsr = 1;
+    if (m.pid === 'forest') around(G, ctr, 18, j => { c.square[j] = 1; c.fun[j] = 1; });
   }
   if (c.cnt.barracks) c.police.fill(1);                          // ordu bütün haritada asayişi sağlar
   // Raya ya da yük istasyonunun kapsamına yakın ocak ve madenler demiryoluyla satar
@@ -527,13 +567,13 @@ function totals(G) {
   const dRes = want - free;
   const yieldPP = farmJobs ? farmFood / farmJobs : B.foodPerFarmer;      // değirmenler kişi başı verimi artırır
   const army = c.cnt.barracks ? B.barracks.food * c.cnt.barracks : 0;
-  const fish = (c.cnt.pier || 0) * B.pierFood + ((c.act || {}).ranch || 0) * B.ranchFood;      // balık ve hayvancılık
+  const fish = (c.cnt.pier || 0) * B.pierFood + ((c.act || {}).ranch || 0) * B.ranchFood + ((c.act || {}).vfarm || 0) * 600;      // balık ve hayvancılık
   // Elektrik ve çöp (1890 sonrası): şehir geneli kapasite ve tüketim
   const yr = yearOf(G), A = c.act || {};
-  const pcap = yr < 1890 ? 0 : (A.power || 0) * B.power.plant * (G.flags.noCoal ? 0.3 : 1) + (A.hydro || 0) * B.power.hydro + (A.lmPower ? B.power.landmark : 0) + (A.lmDam ? 2500 : 0) + (A.gas || 0) * 2000;
-  const puse = yr < 1890 ? 0 : Math.round(P * (ramp(yr, 1890, 1915) + 0.6 * ramp(yr, 1930, 1965)) + (A.factory || 0) * B.power.factoryUse + (A.tram || 0) * B.power.tramUse);
+  const pcap = yr < 1890 ? 0 : (A.power || 0) * B.power.plant * (G.flags.noCoal ? 0.3 : 1) + (A.hydro || 0) * B.power.hydro + (A.lmPower ? B.power.landmark : 0) + (A.lmDam ? 2500 : 0) + (A.gas || 0) * 2000 + (A.nuclear || 0) * 6000 + (A.solar || 0) * 1500 + (A.wind || 0) * 450 + (A.fusion || 0) * 25000 + (A.lmRenew ? 8000 : 0);
+  const puse = yr < 1890 ? 0 : Math.round(P * (ramp(yr, 1890, 1915) + 0.6 * ramp(yr, 1930, 1965) + 0.5 * ramp(yr, 1970, 2005) - 0.3 * ramp(yr, 2020, 2060)) + (A.vfarm || 0) * 80 + (A.tech || 0) * 300 + (A.metro || 0) * 60 + (A.factory || 0) * B.power.factoryUse + (A.tram || 0) * B.power.tramUse);
   const power = puse ? Math.min(1, pcap / puse) : (pcap ? 1 : 0);
-  const waste = P ? Math.min(1, (A.dump || 0) * B.dumpCap / P) : 1;
+  const waste = P ? Math.min(1, ((A.dump || 0) * B.dumpCap + (A.recycle || 0) * 7000) / P) : 1;
   const dFarm = Math.ceil(((P + want) * B.foodPerPerson + army - fish + reg * 0.6 * B.foodPerFarmer) / yieldPP) - farmJobs;
   const dCom = P >= 20 ? Math.round((P + want) * B.comShare + reg * 0.4) - comJobs : -1;
   for (const k in cov) cov[k] = P ? cov[k] / P : 0;
@@ -774,7 +814,8 @@ function develop(G, z, demand, c, T) {
 
 function canUpgrade(G, i, z, lv, c, T) {
   if (z === Z_RES) {
-    if (lv >= 5) return false;
+    if (lv >= 6) return false;
+    if (lv === 5) return T.yr >= 1980 && T.power >= 0.9 && c.transit[i] && c.clinic[i] && c.school[i] && !c.dirt[i] && avgHap(G) > 62;     // gökdelen
     if (lv === 4) return T.yr >= 1950 && T.power >= 0.9 && c.transit[i] && c.clinic[i] && !c.dirt[i] && avgHap(G) > 60;     // blok apartman
     if (lv === 3) return T.yr >= 1890 && T.power >= 0.9 && c.transit[i] && c.water[i] && !c.dirt[i] && avgHap(G) > 58;   // apartman: elektrik ve ulaşım ister
     if (!c.water[i] || c.dirt[i]) return false;                   // su yoksa ya da maden dibindeyse ev büyümez
@@ -783,7 +824,7 @@ function canUpgrade(G, i, z, lv, c, T) {
   }
   if (z === Z_FARM) return lv < 2 && T.P >= 80 && countAround(G, i, Z_FARM) >= 2;
   if (z === Z_COM) return (lv === 1 && T.P >= 120) || (lv === 2 && T.P >= 400 && avgHap(G) > 58) ||
-    (lv === 3 && T.yr >= 1890 && T.power >= 0.9 && c.transit[i]) || (lv === 4 && T.yr >= 1950 && T.power >= 0.9 && c.transit[i] && avgHap(G) > 60);     // iş hanı, mağazalar
+    (lv === 3 && T.yr >= 1890 && T.power >= 0.9 && c.transit[i]) || (lv === 4 && T.yr >= 1950 && T.power >= 0.9 && c.transit[i] && avgHap(G) > 60) || (lv === 5 && T.yr >= 1980 && T.power >= 0.9 && c.transit[i] && avgHap(G) > 62);     // iş hanı, mağazalar
   return false;
 }
 function nearZone(G, i, z, r) {
@@ -876,7 +917,8 @@ function monthEnd(G) {
   const fu = A.factory || 0, needC = B.factory.coal * fu, needI = B.factory.iron * fu;
   const frac = fu ? clamp(Math.min((G.res.komur - rsv('komur')) / needC, (G.res.demir - rsv('demir')) / needI), 0, 1) : 0;
   G.res.komur -= needC * frac; G.res.demir -= needI * frac;
-  const facInc = B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
+  const techInc = (A.tech || 0) * 500 * (0.4 + 0.6 * T.power);
+  const facInc = techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
   G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: frac, fac: fu };
   for (const k of RES) {
     if (G.res[k] > B.stockCap) {
@@ -898,11 +940,11 @@ function monthEnd(G) {
     taxCom: emp.e * B.comProfit * fill * r,
     trade: c.outside && net > 0 ? net * B.exportPrice * (c.cnt.port ? B.port.food * (G.map === 'sea' ? 1.2 : 1) : 1) : 0,
     sales,
-    tourism: (c.tourism ? 40 + G.reg * 0.15 : 0) + (c.air ? 150 + G.reg * 0.35 : 0),      // anıtlar ve havalimanı
+    tourism: (c.tourism ? 40 + G.reg * 0.15 : 0) + (c.air ? 150 + G.reg * 0.35 : 0) + (c.expo ? 300 + G.reg * 0.4 : 0),      // anıtlar ve havalimanı
     tickets: hippoIncome(G, c, P) * (race ? B.hippo.raceMul : 1) + (c.stadium ? 60 + Math.sqrt(P) * 2.5 : 0),
     factory: facInc,
   };
-  const svcUp = Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0) + c.upExtra;
+  const svcUp = (Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0) + c.upExtra) * (G.fx.smart ? 0.75 : 1);
   const exp = {
     roads: c.roads * B.upkeep.road + c.rails * B.upkeep.rail + c.levees * B.upkeep.levee,
     bridges: c.bridges * B.upkeep.bridge,
@@ -914,7 +956,7 @@ function monthEnd(G) {
   const netMoney = sum(inc) - sum(exp);
   if (G.gov) G.money += netMoney;
   // Bölge talebi: memnun, itibarlı ve bağlantılı şehir çevresinde ün kazanır
-  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0));
+  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0) + (G.fx.osb ? 3 : 0) + (c.hsr ? 6 : 0));
   G.reg = Math.min(G.reg, 150 + P * 0.5);      // bölge talebi şehrin büyüklüğüyle sınırlı
   G.last = { inc, exp, net: netMoney };
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
@@ -943,7 +985,7 @@ function monthEnd(G) {
         waste: -Math.round((1 - T.waste) * 10 * ramp(T.yr, 1900, 1912)),
         army: c.cnt.barracks ? 3 : 0,
         event: G.ev && G.day < G.ev.until ? -G.ev.hit : 0,
-        gov: 3 + (G.fx.victory ? 5 : 0),
+        gov: 3 + (G.fx.victory ? 5 : 0) + (G.fx.forest ? 6 : 0) + (G.fx.research ? 2 : 0),
       };
       const target = clamp(Object.values(f).reduce((a, b) => a + b, 0), 0, 100);
       G.hf[g] = f;
@@ -967,6 +1009,9 @@ function monthEnd(G) {
   if (G.money < 0 && !G.flags.debt) { G.flags.debt = 1; msg(G, 'debt', 'Hazine eksiye düştü. Vergiyi artır ya da harcamaları azalt.'); }
   if (G.money >= 0) G.flags.debt = 0;
   for (const m of [100, 250, 500, 1000, 2000, 5000]) if (P >= m && !G.flags['p' + m]) { G.flags['p' + m] = 1; msg(G, 'pop', `Nüfus ${m} kişiyi geçti.`); }
+  if (T.yr >= 1970 && !G.flags.era4) { G.flags.era4 = 1; msg(G, 'era', 'Yeni dönem: Bilgi çağı (1970–2010). Metro, nükleer santral, geri dönüşüm ve teknopark açılıyor; 1980’den sonra gökdelen ve ofis kuleleri.'); }
+  if (T.yr >= 2010 && !G.flags.era5) { G.flags.era5 = 1; msg(G, 'era', 'Yeni dönem: Yeşil çağ (2010–2050). Güneş tarlası ve rüzgâr türbini açıldı; 2030’da dikey tarım, 2060’ta füzyon.'); }
+  if (T.yr >= 2050 && !G.flags.era6) { G.flags.era6 = 1; msg(G, 'era', 'Gelecek (2050–2100): şehir daha az enerjiyle daha çok iş yapıyor. Son görevler araştırma merkezi ve kent ormanı.'); }
   if (T.yr >= 1930 && !G.flags.era3) { G.flags.era3 = 1; msg(G, 'era', 'Yeni dönem: Motor çağı (1930–1970). Otobüs durağı, lise, hastane ve çimento fabrikası açıldı; konaklar ve apartmanlar 1950’den sonra blok apartmana dönüşebilir.'); }
   if (T.yr >= 1890 && !G.flags.era2) { G.flags.era2 = 1; msg(G, 'era', 'Yeni dönem: Elektrik çağı (1890–1930). Üretim menüsünde santral ve fabrika, Hizmet menüsünde tramvay durağı ve çöp alanı açıldı.'); }
   if (T.yr >= 1896 && T.power < 0.5 && !G.flags.powerTip) { G.flags.powerTip = 1; msg(G, 'power', 'Halk elektrik istiyor: Üretim menüsünden santral kur.'); }
@@ -1136,7 +1181,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
