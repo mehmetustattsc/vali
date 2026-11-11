@@ -134,8 +134,36 @@ function startGame(g) {
 }
 
 /* ---------- kayıt ---------- */
-function save() { try { if (G && G.gov) localStorage.setItem(SAVE_KEY, VL.serialize(G)); } catch (e) { /* depolama kapalı olabilir */ } }
-function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ? VL.deserialize(s) : null; } catch (e) { return null; } }
+/* Kayıt yuvaları: her şehir ayrı anahtarda, liste 'vali.saves' içinde. Eski tek kayıt ilk açılışta yuvaya taşınır. */
+const IDX_KEY = 'vali.saves', SLOT = (id) => 'vali.slot.' + id, MAX_SLOTS = 10;
+const MAP_NAME = { river: 'Nehir kenarı', flat: 'Geniş ova', mount: 'Dağlık', lake: 'Büyük göl', sea: 'Deniz kıyısı' };
+function readIdx() { try { return JSON.parse(localStorage.getItem(IDX_KEY) || '[]'); } catch (e) { return []; } }
+function writeIdx(l) { try { localStorage.setItem(IDX_KEY, JSON.stringify(l)); } catch (e) { /* depolama kapalı */ } }
+function slotMeta(g) {
+  const P = VL.totals(g).P;
+  return { id: g.slot, name: g.name || (MAP_NAME[g.map] || 'Şehir'), map: g.map, date: VL.dateText(g), pop: P, t: Date.now() };
+}
+function newSlotId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+function migrateLegacy() {
+  try {
+    const s = localStorage.getItem(SAVE_KEY); if (!s) return;
+    const g = VL.deserialize(s);
+    if (g) { g.slot = g.slot || newSlotId(); localStorage.setItem(SLOT(g.slot), VL.serialize(g)); writeIdx([slotMeta(g)].concat(readIdx().filter(x => x.id !== g.slot))); }
+    localStorage.removeItem(SAVE_KEY);
+  } catch (e) { /* bozuk eski kayıt */ }
+}
+function save() {
+  if (!G || !G.gov) return true;
+  if (!G.slot) G.slot = newSlotId();
+  try {
+    localStorage.setItem(SLOT(G.slot), VL.serialize(G));
+    writeIdx([slotMeta(G)].concat(readIdx().filter(x => x.id !== G.slot)));
+    return true;
+  } catch (e) { toast('Kayıt yeri doldu: menüden eski bir şehri sil.'); return false; }
+}
+function loadSlot(id) { try { const s = localStorage.getItem(SLOT(id)); const g = s ? VL.deserialize(s) : null; if (g) g.slot = id; return g; } catch (e) { return null; } }
+function deleteSlot(id) { try { localStorage.removeItem(SLOT(id)); } catch (e) { /* */ } writeIdx(readIdx().filter(x => x.id !== id)); }
+function loadSave() { migrateLegacy(); const l = readIdx().sort((a, b) => b.t - a.t); for (const m of l) { const g = loadSlot(m.id); if (g) return g; } return null; }
 
 /* ---------- arayüz iskeleti ---------- */
 function buildChrome() {
@@ -365,6 +393,7 @@ function riskHtml() {
 function gameHtml() {
   return `${canFull() && !installed() ? `<button class="wide" id="gFull">${ico('full')} ${isFull() ? 'Tam ekrandan çık' : 'Tam ekran'}</button>` : ''}
   <button class="wide" id="gSave">Kaydet</button>
+  <button class="wide" id="gName">Şehrin adı: ${G.name || MAP_NAME[G.map] || 'Şehir'}</button>
   <button class="wide ${overlayPinned ? 'on' : ''}" id="gWater">${ico('layers')} Su kapsama katmanı</button>
   <button class="wide ${autoOn() ? 'on' : ''}" id="gAuto">Alan çizerken otomatik sokak: ${autoOn() ? 'açık' : 'kapalı'}</button>
   <button class="wide ${G.opt && G.opt.disasters ? 'on' : ''}" id="gDis">Doğal afetler: ${G.opt && G.opt.disasters ? 'açık' : 'kapalı'}</button>
@@ -374,12 +403,13 @@ function gameHtml() {
   <p class="note small">Vali · prototip 1 · ${VL.dateText(G)}</p>`;
 }
 function bindGame() {
-  $('#gSave').onclick = () => { save(); toast('Kaydedildi.'); };
+  $('#gSave').onclick = () => { if (save()) toast('Kaydedildi.'); };
+  $('#gName').onclick = () => { const n = prompt('Şehrin adı', G.name || MAP_NAME[G.map] || ''); if (n && n.trim()) { G.name = n.trim().slice(0, 24); save(); renderPanel(); } };
   if ($('#gFull')) $('#gFull').onclick = () => { fullscreen(!isFull()); setTimeout(renderPanel, 400); };
   $('#gWater').onclick = () => { overlayPinned = !overlayPinned; setTool(tool); renderPanel(); };
   $('#gAuto').onclick = () => { G.opt = G.opt || {}; G.opt.autoRoads = !autoOn(); renderPanel(); };
   $('#gDis').onclick = () => { G.opt.disasters = !G.opt.disasters; renderPanel(); };
-  $('#gMenu').onclick = () => { save(); closePanel(); setSpeed(0); showMenu(!!loadSave()); };
+  $('#gMenu').onclick = () => { save(); closePanel(); setSpeed(0); showMenu(!!readIdx().length); };
 }
 
 function tileInfo(i) {
@@ -668,15 +698,41 @@ function showMenu(hasSave) {
     <div class="menu-actions">
       ${hasSave ? '<button class="primary" id="mCont">Devam et</button>' : ''}
       <button class="${hasSave ? '' : 'primary'}" id="mNew">Yeni şehir</button>
+      ${hasSave ? '<button id="mLoad">Kayıtlar</button>' : ''}
     </div>
+    <div class="saves" hidden></div>
     <div class="setup" hidden>
       <h3>Harita</h3><div class="cards">${maps.map(([k, n]) => `<button class="card ${k === mapSel ? 'on' : ''}" data-map="${k}"><i class="map-${k}"></i><span>${n}</span></button>`).join('')}</div><p class="note" id="mapNote">${maps[0][2]}</p>
       <h3>Başlangıç yılı</h3><div class="chips">${years.map(([y, ok]) => `<button class="chip ${ok ? 'on' : ''}" ${ok ? '' : 'disabled'}>${y}${ok ? '' : ' · yakında'}</button>`).join('')}</div>
       <button class="primary" id="mGo">Şehri kur</button>
     </div></div>`;
   if (hasSave) $('#mCont').onclick = () => { fullscreen(true); startGame(loadSave() || G); };
+  const list = () => {
+    migrateLegacy();
+    const box = m.querySelector('.saves'), l = readIdx().sort((a, b) => b.t - a.t);
+    box.innerHTML = `<h3>Kayıtlı şehirler <span>${l.length} / ${MAX_SLOTS}</span></h3>` + (l.length ? l.map(x => `<div class="slot" data-id="${x.id}">
+      <i class="map-${x.map || 'river'}"></i><span><b>${(x.name || 'Şehir').replace(/</g, '&lt;')}</b><small>${MAP_NAME[x.map] || ''} · ${x.date} · ${fmt(x.pop || 0)} kişi</small></span>
+      <button class="go" data-act="open">Aç</button><button class="del" data-act="del" aria-label="Sil">${ico('close')}</button></div>`).join('') : '<p class="note">Kayıtlı şehir yok.</p>') +
+      '<button class="wide" data-act="back">Geri</button>';
+  };
+  if (hasSave) $('#mLoad').onclick = () => { list(); m.querySelector('.saves').hidden = false; m.querySelector('.menu-actions').hidden = true; };
+  m.querySelector('.saves').onclick = (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const row = b.closest('.slot'), id = row && row.dataset.id;
+    if (b.dataset.act === 'back') { m.querySelector('.saves').hidden = true; m.querySelector('.menu-actions').hidden = false; return; }
+    if (b.dataset.act === 'open') { const g = loadSlot(id); if (g) { fullscreen(true); startGame(g); } else toast('Bu kayıt açılamadı.'); return; }
+    if (b.dataset.act === 'del') {
+      if (b.dataset.sure) { deleteSlot(id); if (G && G.slot === id) G.slot = null; list(); if (!readIdx().length) showMenu(false); }
+      else { b.dataset.sure = 1; b.classList.add('sure'); b.innerHTML = 'Emin misin?'; }
+    }
+  };
   $('#mNew').onclick = () => { m.querySelector('.setup').hidden = false; m.querySelector('.menu-actions').hidden = true; };
-  $('#mGo').onclick = () => { fullscreen(true); startGame(VL.newGame({ seed: (Date.now() % 9973) + 1, map: mapSel })); };
+  $('#mGo').onclick = () => {
+    if (readIdx().length >= MAX_SLOTS) { toast(`En çok ${MAX_SLOTS} şehir kaydedilebilir. Kayıtlar'dan birini sil.`); return; }
+    save();      // açık şehri kaybetme
+    const g = VL.newGame({ seed: (Date.now() % 9973) + 1, map: mapSel }); g.slot = newSlotId();
+    fullscreen(true); startGame(g);
+  };
   m.querySelector('.cards').onclick = (e) => { const b = e.target.closest('[data-map]'); if (!b) return; mapSel = b.dataset.map; m.querySelectorAll('.card').forEach(c => c.classList.toggle('on', c === b)); $('#mapNote').textContent = maps.find(x => x[0] === mapSel)[2]; };
 }
 
