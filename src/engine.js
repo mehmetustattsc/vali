@@ -40,7 +40,7 @@ const B = {
   dumpCap: 2500,                      // bir çöp alanının hizmet ettiği kişi
   resCap: [0, 6, 14, 28, 56, 110],            // konut seviyesine göre kişi
   farmJobs: [0, 6, 11],              // tarla seviyesine göre çiftçi aile
-  comJobs: [0, 7, 16, 30],           // ticaret seviyesine göre işçi aile
+  comJobs: [0, 7, 16, 30, 60, 110],           // ticaret seviyesine göre işçi aile
   govJobs: 12,
   buildDays: { 1: 5, 2: 4, 3: 8 },   // bölge türüne göre inşaat süresi (gün)
   wage: { c: 2, i: 2.6, e: 3.2, o: 4, v: 9 },            // kişi başı aylık kazanç, vergi bunun üzerinden
@@ -48,7 +48,7 @@ const B = {
   foodPerFarmer: 1.6, foodPerPerson: 1.0,
   regStart: 12, regGrowth: 3.5,      // bölgenin şehrin ürünlerine talebi (dış yol bağlanınca başlar)
   exportPrice: 0.4,                  // fazla gıdanın birimi başına hazineye pazar resmi
-  comShare: 0.17,                    // nüfusun ne kadarı ticaret ve zanaatta çalışır
+  comShare: 0.14,                    // nüfusun ne kadarı ticaret ve zanaatta çalışır
   stockCap: 600,                     // ambarda tutulan en çok kaynak; fazlası kendiliğinden satılır
   price: { kereste: 0.9, tas: 0.6, komur: 1.3, demir: 2.2, cimento: 1.4 },   // birim satış fiyatı (hazineye giren pay)
   deliverPerMonth: 45,               // şantiyeye ayda taşınan en çok kaynak (her tür için; demiryoluyla iki katı)
@@ -770,7 +770,8 @@ function canUpgrade(G, i, z, lv, c, T) {
     return true;
   }
   if (z === Z_FARM) return lv < 2 && T.P >= 80 && countAround(G, i, Z_FARM) >= 2;
-  if (z === Z_COM) return (lv === 1 && T.P >= 120) || (lv === 2 && T.P >= 400 && avgHap(G) > 58);
+  if (z === Z_COM) return (lv === 1 && T.P >= 120) || (lv === 2 && T.P >= 400 && avgHap(G) > 58) ||
+    (lv === 3 && T.yr >= 1890 && T.power >= 0.9 && c.transit[i]) || (lv === 4 && T.yr >= 1950 && T.power >= 0.9 && c.transit[i] && avgHap(G) > 60);     // iş hanı, mağazalar
   return false;
 }
 function nearZone(G, i, z, r) {
@@ -902,6 +903,7 @@ function monthEnd(G) {
   if (G.gov) G.money += netMoney;
   // Bölge talebi: memnun, itibarlı ve bağlantılı şehir çevresinde ün kazanır
   if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (G.fx.motorway ? 4 : 0) + (c.air ? 3 : 0));
+  G.reg = Math.min(G.reg, 150 + P * 0.5);      // bölge talebi şehrin büyüklüğüyle sınırlı
   G.last = { inc, exp, net: netMoney };
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
   if (P > 0) {
@@ -1031,10 +1033,11 @@ function regrow(G) {
 /* ---------- afetler ve önlemler ----------
    Yangın: itfaiye kapsamı dışındaki mahallelerde yayılır.  Sel: ilkbaharda nehir kenarında, setler korur.
    Salgın: su ve hekimhane eksik kalabalık şehirlerde. Su kemeri riski yarıya indirir. */
+const fireP = (P) => 0.02 + 0.06 * ramp(P, 100, 4000);      // ayda bir yangın çıkma olasılığı; itfaiye kapsamındaysa söndürülür
 function riskOf(G, T, c) {
   const P = T.P, near = floodTiles(G, c);
   G.risk = {
-    fire: P < 60 ? 0 : clamp(Math.round((0.015 + P / 40000) * (1 - T.cov.fire * 0.85) * 1200), 0, 100),
+    fire: P < 60 ? 0 : clamp(Math.round((1 - Math.pow(1 - fireP(P) * (1 - T.cov.fire), 12)) * 100), 0, 100),      // bir yıl içinde yayılan yangın çıkma olasılığı
     flood: Math.min(100, near.exposed * 3),
     plague: P < 120 ? 0 : clamp(Math.round(((1 - T.cov.water) * 0.03 + (1 - T.cov.clinic) * 0.025 * ramp(P, 200, 800)) * (G.fx.aqueduct ? 0.5 : 1) * (G.fx.sewer ? 0.3 : 1) * (1 + (1 - T.waste) * ramp(T.yr, 1900, 1912)) * 1200), 0, 100),
   };
@@ -1052,7 +1055,7 @@ function disasters(G, T, c, force) {
   const P = T.P, m = dateOf(G).month;
   const roll = (p) => force || rng(G) < p;
   const hit = (k, h, months) => { G.ev = { k, hit: h, until: G.day + months * DAYS_PER_MONTH }; };
-  if ((force === 'fire' || !force) && P >= 60 && roll((0.015 + P / 40000) * (1 - T.cov.fire * 0.85))) {
+  if ((force === 'fire' || !force) && P >= 60 && roll(fireP(P))) {
     const built = []; for (let i = 0; i < G.N * G.N; i++) if ((G.z[i] === Z_RES || G.z[i] === Z_COM) && G.lv[i] > 0) built.push(i);
     if (built.length) {
       const s = built[(rng(G) * built.length) | 0];

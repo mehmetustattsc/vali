@@ -112,7 +112,7 @@ const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 
 const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
 const COVER = { bus: 'transit', lyceum: 'school', hospital: 'clinic', tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
-const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak', 'Apartman', 'Blok apartman'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han'] };
+const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak', 'Apartman', 'Blok apartman'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han', 'İş hanı', 'Mağazalar'] };
 const ZONE_NAME = { 1: 'Konut alanı', 2: 'Tarla alanı', 3: 'Ticaret alanı' };
 const SPEEDS = [0, 1, 2, 5];
 const DAY_MS = 1500;   // 1x: bir gün 1,5 saniye, bir ay 45 saniye; en hızlıda bir yıl yaklaşık 1,8 dakika
@@ -266,7 +266,7 @@ function updateHud(force) {
   $('#popb b').textContent = fmt(T.P);
   const h = Math.round(VL.avgHap(G)); $('#hapb b').textContent = T.P ? '%' + h : '—';
   $('#hapb').dataset.mood = !T.P ? '' : h >= 65 ? 'good' : h >= 45 ? 'ok' : 'bad';
-  const bar = (d) => Math.max(-1, Math.min(1, Math.tanh(d / 12)));
+  const sc = Math.max(12, T.P * 0.012), bar = (d) => Math.max(-1, Math.min(1, Math.tanh(d / sc)));      // büyük şehirde ölçek büyür
   const set = (sel, d) => { const el = $(sel), v = bar(d); el.style.setProperty('--v', Math.abs(v)); el.classList.toggle('neg', v < 0); };
   set('#dR i', T.dRes); set('#dF i', T.dFarm); set('#dC i', T.dCom);
   if (panelKind === 'budget' || panelKind === 'city' || panelKind === 'proj') renderPanel();

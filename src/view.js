@@ -407,7 +407,7 @@ export function createView(canvas, G0) {
         continue;
       }
       if (building) {   // iskele: ahşap çatkı yükselir
-        const hgt = (z === V.Z_RES ? [0, 0.34, 0.55, 0.85, 1.5, 2.6] : [0, 0.42, 0.65, 1.1])[lv] * (0.15 + 0.85 * pg);
+        const hgt = (z === V.Z_RES ? [0, 0.34, 0.55, 0.85, 1.5, 2.6] : [0, 0.42, 0.65, 1.1, 1.7, 2.6])[lv] * (0.15 + 0.85 * pg);
         const w = lv === 1 ? 0.5 : lv === 2 ? 0.66 : 0.84;
         part(P.box, cx, cz, rot, 0, 0, 0.05, w, hgt, w * 0.85, PAL.timber);
         for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) part(P.box, cx, cz, rot, a * w * 0.55, 0, 0.05 + b * w * 0.48, 0.03, hgt + 0.12, 0.03, '#8a6a42');
@@ -447,7 +447,8 @@ export function createView(canvas, G0) {
       }
       if (z === V.Z_COM) {
         const wc = pick(PAL.comWall, r), rc = pick(PAL.comRoof, r2), ac = pick(PAL.awning, r * 7);
-        const d = lv === 1 ? [0.6, 0.42, 0.52] : lv === 2 ? [0.8, 0.66, 0.68] : [0.88, 1.1, 0.8];
+        const d = lv === 1 ? [0.6, 0.42, 0.52] : lv === 2 ? [0.8, 0.66, 0.68] : lv === 3 ? [0.88, 1.1, 0.8] : lv === 4 ? [0.9, 1.7, 0.84] : [0.94, 2.6, 0.88];
+        if (lv >= 4) for (let k = 0; k < (lv === 4 ? 3 : 6); k++) part(P.box, cx, cz, rot, 0, 0.55 + k * 0.33, d[2] / 2 + 0.012, d[0] * 0.86, 0.13, 0.012, '#4d6a80');
         part(P.box, cx, cz, rot, 0, 0, 0.02, d[0], d[1], d[2], wc);
         part(P.roof, cx, cz, rot, 0, d[1], 0.02, d[0] + 0.06, lv === 3 ? 0.2 : 0.24, d[2] + 0.06, rc);
         part(P.box, cx, cz, rot, 0, 0.26, d[2] / 2 + 0.1, d[0] * 0.9, 0.035, 0.2, ac);
