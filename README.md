@@ -65,6 +65,10 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - On yeni görev (1971–2061): metro hattı, OSB, teknik üniversite, fuar merkezi, akıllı şehir merkezi, hızlı tren, iklim parkı, yenilenebilir enerji, araştırma merkezi, kent ormanı.
 - 2000 ve 2026 başlangıç yılları açıldı.
 
+## Sürüm 0.9.1
+- Her haritada başlangıç tarafında, kendi arazinde ve karadan ulaşılan küçük bir tepe var (taş ocağı, kömür ve demir için). Büyük göl ve deniz kıyısında artık gölü aşmak gerekmez.
+- Banka kredisi (Bütçe paneli): sınır gelire ve itibara bağlı, 10 yıl eşit taksit, faiz dönemle düşer (%9 → %4). Aynı anda bir kredi; erken kapatınca itibar +2.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

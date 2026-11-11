@@ -25,6 +25,7 @@ const RES_NAME = { kereste: 'Kereste', tas: 'Taş', komur: 'Kömür', demir: 'De
    1850 dönemi için gerçeğe yakın oranlar: nüfusun ~%60'ı tarımla geçinir, kişi başı ayda 1 birim gıda. */
 const B = {
   startMoney: 4000,
+  loan: { base: 4000, months: 18, term: 120 },
   cost: { road: 12, roadForest: 20, bridge: 140, zone: 3, zoneForest: 10, bulldoze: 3, rail: 30, railBridge: 220, levee: 25, overpass: 90, tunnel: 70, tunnelRail: 100 },
   upkeep: { road: 0.6, bridge: 3, gov: 12, rail: 0.8, levee: 0.2 },   // aylık
   ranchFood: 480,                    // hayvan çiftliği: yaklaşık 50 tarla karesinin gıdası
@@ -243,6 +244,7 @@ function newGame(opts) {
   for (let ay = 0; ay < 3; ay++) for (let ax = 0; ax < 3; ax++) G.areas.push({ x: ax * S, y: ay * S, w: S, h: S, own: ay === 1 ? 1 : 0 });
   G.own = new Array(n).fill(0); for (const a of G.areas) if (a.own) markOwn(G, a);
   G.bought = 0;
+  ensureRock(G);
   genDeposits(G);
   G.forest0 = G.t.filter(t => t === T_FOREST).length;
   setupEra(G);
@@ -354,6 +356,48 @@ function genDeposits(G) {
     for (const i of edge.filter(i => !G.dep[i] && reach(i)).sort((a, b) => score(b, k) - score(a, k))) { if (have >= 2) break; G.dep[i] = code; have++; }
   }
 }
+/* Başlangıç tarafında (dış yoldan karadan, kendi arazimizde ulaşılan yerde) taş ocağı kurulacak kaya olmalı.
+   Yoksa (büyük göl, deniz) yolun kuzeyine ya da güneyine küçük bir tepe kondurulur. */
+function ensureRock(G) {
+  const N = G.N, s = G.seed, seen = new Uint8Array(N * N), q = [];
+  for (let k = 0; k < 10; k++) { const i = idx(G, k, G.entry.y); seen[i] = 1; q.push(i); }
+  let rock = 0;
+  while (q.length) { const i = q.pop(); for (const j of neigh4(G, i)) { if (seen[j] || !G.own[j] || G.t[j] === T_WATER) continue; seen[j] = 1; if (G.t[j] === T_ROCK) rock++; else q.push(j); } }
+  if (rock >= 25) return;
+  const ry = G.entry.y, S = N / 3;
+  const spots = [[Math.round(N * 0.2), ry - 10], [Math.round(N * 0.2), ry + 10], [Math.round(N * 0.3), ry - 11], [Math.round(N * 0.3), ry + 11]]
+    .map(([x, y]) => [x, clamp(y, S + 5, 2 * S - 6)]);
+  let best = null, bs = -1;
+  for (const [x, y] of spots) { let land = 0; for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) { const i = idx(G, x + dx, y + dy); if (seen[i] && G.t[i] !== T_WATER && !G.r[i]) land++; } if (land > bs) { bs = land; best = [x, y]; } }
+  const [hx, hy] = best;
+  for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) {
+    const x = hx + dx, y = hy + dy; if (!inMap(G, x, y)) continue;
+    const i = idx(G, x, y); if (G.t[i] === T_WATER || G.r[i] || Math.abs(y - ry) < 4) continue;
+    const r = (4.2 - Math.hypot(dx, dy * 1.2) + (fbm(x / 3, y / 3, s + 31) - 0.5) * 2) / 2;
+    if (r > 0.15) { G.t[i] = T_ROCK; G.h[i] = Math.round(clamp(r * 3 + 1, 1, 4)); }
+  }
+}
+
+/* Banka kredisi: aynı anda bir kredi, 10 yıl eşit taksit. Sınır gelire ve itibara bağlı. */
+function loanRate(G) { const y = dateOf(G).year; return y < 1900 ? 0.09 : y < 1950 ? 0.07 : y < 2000 ? 0.06 : 0.04; }
+function loanLimit(G) {
+  const inc = Object.values((G.last && G.last.inc) || {}).reduce((a, b) => a + b, 0);
+  return Math.round((B.loan.base + inc * B.loan.months) * clamp(G.itibar / 50, 0.5, 1.5) / 500) * 500;
+}
+function loanPay(G, amt) { const r = loanRate(G) / 12, n = B.loan.term; return Math.round(amt * r / (1 - Math.pow(1 + r, -n))); }
+function takeLoan(G, amt) {
+  if (G.loan) return { err: 'Önce mevcut krediyi kapat.' };
+  if (!G.gov) return { err: 'Önce Valilik kur.' };
+  amt = Math.round(Math.min(amt, loanLimit(G)) / 100) * 100; if (amt < 500) return { err: 'Kredi sınırı çok düşük.' };
+  G.loan = { amt, bal: amt, pay: loanPay(G, amt), left: B.loan.term, rate: loanRate(G) };
+  G.money += amt; return { done: true, amt };
+}
+function payLoan(G) {
+  if (!G.loan) return { err: 'Kredi yok.' };
+  const b = Math.ceil(G.loan.bal); if (G.money < b) return { err: 'Hazine yetmiyor: ' + b + ' gerekir.' };
+  G.money -= b; G.loan = null; G.itibar = Math.min(100, G.itibar + 2); return { done: true };
+}
+
 function markOwn(G, a) { for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) G.own[idx(G, x, y)] = 1; }
 function areaAt(G, i) { const x = i % G.N, y = (i / G.N) | 0; return (G.areas || []).find(a => x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h); }
 function landPrice(G) { return Math.round(3000 * Math.pow(1.7, G.bought || 0) / 100) * 100; }
@@ -950,6 +994,7 @@ function monthEnd(G) {
     bridges: c.bridges * B.upkeep.bridge,
     gov: G.gov ? B.upkeep.gov : 0,
     services: svcUp,
+    loan: G.loan ? Math.min(G.loan.pay, G.loan.bal * (1 + G.loan.rate / 12)) : 0,
   };
   if (race) { G.raceUntil = G.day + 2 * DAYS_PER_MONTH; msg(G, 'race', `Büyük yarış günü! Hipodrom bu ay ${Math.round(inc.tickets)} bilet geliri getirdi, halk bayram ediyor.`); }
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
@@ -959,6 +1004,7 @@ function monthEnd(G) {
   if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0) + (G.fx.osb ? 3 : 0) + (c.hsr ? 6 : 0));
   G.reg = Math.min(G.reg, 150 + P * 0.5);      // bölge talebi şehrin büyüklüğüyle sınırlı
   G.last = { inc, exp, net: netMoney };
+  if (G.loan) { const L = G.loan; L.bal = L.bal * (1 + L.rate / 12) - exp.loan; L.left--; if (L.left <= 0 || L.bal < 1) { G.loan = null; msg(G, 'loan', 'Banka kredisi bitti, son taksit ödendi.'); } }
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
   if (P > 0) {
     const deficit = net < 0 ? -net / Math.max(1, cons) : 0;
@@ -1181,7 +1227,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

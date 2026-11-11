@@ -314,11 +314,20 @@ function budgetHtml() {
   <h3>Gelir</h3>
   ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Esnaf, eğitimli ve varlıklılardan', v((i.taxE || 0) + (i.taxO || 0) + (i.taxV || 0)))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom ve stadyum biletleri', v(i.tickets || 0))}${row('Fabrika ve teknopark geliri', v(i.factory || 0))}
   <h3>Gider</h3>
-  ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}
+  ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}${e.loan ? row('Kredi taksiti', v(-e.loan)) : ''}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
   <h3>Vergi oranı <output id="taxOut">%${G.taxRate}</output></h3>
   <input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}">
-  <p class="note" id="taxNote">${taxNote()}</p>`;
+  <p class="note" id="taxNote">${taxNote()}</p>
+  ${loanHtml()}`;
+}
+function loanHtml() {
+  const L = G.loan, pct = (r) => '%' + Math.round(r * 100);
+  if (L) return `<h3>Banka kredisi</h3>${row('Kalan borç', fmt(Math.ceil(L.bal)))}${row('Aylık taksit', fmt(L.pay))}${row('Kalan süre', Math.ceil(L.left / 12) + ' yıl (' + L.left + ' ay)')}${row('Faiz', pct(L.rate) + ' yıllık')}
+    <button class="wide" id="loanPay">Krediyi erken kapat (${fmt(Math.ceil(L.bal))})</button><p class="note">Erken kapatırsan itibar +2.</p>`;
+  const lim = VL.loanLimit(G), opts = [0.25, 0.5, 1].map(f => Math.round(lim * f / 100) * 100).filter((a, k, A) => a >= 500 && A.indexOf(a) === k);
+  return `<h3>Banka kredisi</h3><p class="note">Sınır ${fmt(lim)} (gelirine ve itibarına göre). 10 yıl eşit taksit, faiz ${pct(VL.loanRate(G))} yıllık. Aynı anda bir kredi.</p>
+    <div class="loans">${opts.map(a => `<button class="wide" data-loan="${a}">${fmt(a)}<small>ayda ${fmt(VL.loanPay(G, a))}</small></button>`).join('')}</div>`;
 }
 function taxNote() {
   const d = G.taxRate - VL.B.taxNeutral;
@@ -328,6 +337,9 @@ function taxNote() {
 function bindBudget() {
   const r = $('#tax'); if (!r) return;
   r.oninput = () => { G.taxRate = +r.value; $('#taxOut').textContent = '%' + G.taxRate; $('#taxNote').textContent = taxNote(); };
+  const done = (res) => { if (res.err) toast(res.err); else { updateHud(true); renderPanel(); } };
+  for (const b of document.querySelectorAll('[data-loan]')) b.onclick = () => done(VL.takeLoan(G, +b.dataset.loan));
+  const p = $('#loanPay'); if (p) p.onclick = () => done(VL.payLoan(G));
 }
 
 const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', fun: 'Eğlence', transit: 'Ulaşım', power: 'Elektrik', waste: 'Çöp', army: 'Ordu', dirt: 'Maden tozu', event: 'Afet', gov: 'Valilik' };
