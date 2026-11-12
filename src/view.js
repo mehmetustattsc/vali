@@ -498,6 +498,25 @@ export function createView(canvas, G0) {
     } else if (sv === V.S_VFARM) {
       B_(0, 0, 0, 0.82, 2.4, 0.82, '#a9c9a0'); for (let k = 0; k < 7; k++) B_(0, 0.25 + k * 0.32, 0.415, 0.84, 0.12, 0.012, '#5a9446');
       B_(0, 2.4, 0, 0.86, 0.06, 0.86, '#3f6b5a');
+    } else if (sv === V.S_FAYTON) {
+      put(P.box, cx, 0, cz, 0.8, 0.03, 0.4, rot, '#bdb5a5'); B_(0.3, 0.03, 0.12, 0.04, 0.6, 0.04, '#5b4636'); B_(0.3, 0.6, 0.12, 0.16, 0.12, 0.02, '#c9a24a');
+      B_(-0.1, 0.12, -0.05, 0.4, 0.22, 0.26, '#6b3d2a'); R_(-0.1, 0.34, -0.05, 0.44, 0.1, 0.3, '#2f2a26');
+      for (const a of [-0.25, 0.05]) part(P.cyl, cx, cz, rot, a, 0, -0.05, 0.16, 0.16, 0.03, '#3a3532');
+      B_(-0.48, 0.1, -0.05, 0.22, 0.16, 0.1, '#8a5a3a'); B_(-0.6, 0.2, -0.05, 0.08, 0.14, 0.07, '#8a5a3a');
+    } else if (sv === V.S_ATOLYE) {
+      B_(0, 0, 0, 0.86, 0.42, 0.66, '#cfa98a'); R_(0, 0.42, 0, 0.9, 0.26, 0.7, '#8a4a36'); B_(0.28, 0.42, 0.15, 0.1, 0.4, 0.1, '#7a6a5a');
+      for (const a of [-0.25, 0, 0.25]) B_(a, 0.14, 0.335, 0.12, 0.16, 0.01, '#3a3532');
+    } else if (sv === V.S_TIYATRO || sv === V.S_SINEMA) {
+      const cin = sv === V.S_SINEMA;
+      B_(0, 0, 0, 0.88, cin ? 0.62 : 0.7, 0.72, cin ? '#d9cfc0' : '#e8dcc2'); B_(0, cin ? 0.62 : 0.7, 0, 0.92, 0.06, 0.76, cin ? '#5f6f78' : '#8a4a36');
+      for (const a of [-0.3, -0.1, 0.1, 0.3]) if (!cin) B_(a, 0, 0.37, 0.06, 0.62, 0.06, '#f4efe2');
+      B_(0, cin ? 0.42 : 0.56, 0.37, 0.6, 0.14, 0.02, cin ? '#c0392b' : '#7b3f2e'); if (cin) B_(0, 0.1, 0.37, 0.3, 0.28, 0.01, '#2b2f33');
+    } else if (sv === V.S_GOZCU) {
+      part(P.cyl, cx, cz, rot, 0, 0, 0, 0.5, 1.7, 0.5, '#c8bba0'); part(P.cyl, cx, cz, rot, 0, 1.7, 0, 0.58, 0.12, 0.58, '#b5a78b');
+      part(P.cone, cx, cz, rot, 0, 1.82, 0, 0.56, 0.7, 0.56, '#5a6b74'); for (const h2 of [0.5, 1.0, 1.4]) B_(0, h2, 0.25, 0.07, 0.14, 0.02, '#2f2a26');
+    } else if (sv === V.S_KIZKULE) {
+      put(P.cyl, cx, -0.1, cz, 0.86, 0.16, 0.86, 0, '#a39a86'); put(P.box, cx - 0.12, 0.06, cz, 0.42, 0.34, 0.4, 0, '#eee6d6'); put(P.roof, cx - 0.12, 0.4, cz, 0.46, 0.14, 0.44, 0, '#8a4a36');
+      put(P.cyl, cx + 0.18, 0.06, cz + 0.1, 0.24, 0.9, 0.24, 0, '#f2ece0'); put(P.cone, cx + 0.18, 0.96, cz + 0.1, 0.28, 0.4, 0.28, 0, '#5a6b74');
     } else if (sv === V.S_BUS) {
       put(P.box, cx, 0, cz, 0.8, 0.04, 0.4, rot, '#bdb5a5'); B_(0, 0.38, -0.1, 0.7, 0.03, 0.3, '#2e6fb0');
       for (const a of [-0.3, 0.3]) part(P.cyl, cx, cz, rot, a, 0.04, -0.22, 0.03, 0.34, 0.03, '#3a3a3a');
@@ -565,6 +584,47 @@ export function createView(canvas, G0) {
         put(P.box, cx + a, 0, cz + b, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.14, cz + b, 0.42, 0.6, 0.42, 0, PAL.leaf[1]);
       }
       for (const [a, b, w, d] of [[0, -0.42, 0.5, 0.1], [0, 0.42, 0.5, 0.1], [-0.42, 0, 0.1, 0.5], [0.42, 0, 0.1, 0.5]]) Bx(a, 0.03, b, w, 0.08, d, '#8a6845');
+      return;
+    }
+    if (m.k === V.S_HAN) {
+      Bx(0, 0, 0, 1.92, 0.5, 1.92, '#c9b28e'); Bx(0, 0.02, 0, 1.2, 0.5, 1.2, '#b9a47e'); Bx(0, 0.5, 0, 1.96, 0.05, 1.96, '#8a6a4a');
+      for (const [a, b] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) put(P.blob, cx + a, 0.5, cz + b, 0.34, 0.26, 0.34, 0, '#a8a29a');
+      Bx(0, 0, 0.97, 0.4, 0.4, 0.02, '#3a3532'); put(P.cyl, cx, 0.02, cz, 0.3, 0.12, 0.3, 0, PAL.stone);
+      return;
+    }
+    if (m.k === V.S_SAHA) {
+      Bx(0, 0, 0, 2.94, 0.03, 1.94, '#6fa04a');
+      for (let k = -1.2; k <= 1.2; k += 0.4) Bx(k + 0.1, 0.03, 0, 0.2, 0.005, 1.5, '#7fb058');
+      Bx(0, 0.035, 0, 0.03, 0.01, 1.5, '#f4f6f8'); Bx(0, 0.035, 0.75, 2.5, 0.01, 0.03, '#f4f6f8'); Bx(0, 0.035, -0.75, 2.5, 0.01, 0.03, '#f4f6f8');
+      for (const a of [-1.25, 1.25]) { Bx(a, 0.035, 0, 0.03, 0.01, 1.5, '#f4f6f8'); Bx(a, 0.03, -0.2, 0.03, 0.2, 0.03, '#f4f6f8'); Bx(a, 0.03, 0.2, 0.03, 0.2, 0.03, '#f4f6f8'); Bx(a, 0.22, 0, 0.03, 0.03, 0.43, '#f4f6f8'); }
+      Bx(0, 0.03, -0.92, 2.2, 0.22, 0.14, '#c9c2b4'); Bx(0, 0.25, -0.95, 2.2, 0.04, 0.2, '#c0392b');
+      return;
+    }
+    if (m.k === V.S_SANAYI || m.k === V.S_LOJ) {
+      const loj = m.k === V.S_LOJ;
+      Bx(0, 0, 0, 2.94, 0.03, 1.94, '#9a948a');
+      if (loj) { Bx(-0.4, 0.03, -0.2, 1.9, 0.7, 1.2, '#c9ccd0'); Bx(-0.4, 0.73, -0.2, 1.94, 0.04, 1.24, '#5f6f78'); for (let k = -1.1; k <= 0.4; k += 0.5) Bx(k, 0.03, 0.41, 0.34, 0.4, 0.02, '#2f4b6b');
+        for (const [a, b, c2] of [[1.1, -0.5, '#c0392b'], [1.1, 0.0, '#2e6fb0'], [1.1, 0.5, '#d4ac0d']]) Bx(a, 0.03, b, 0.5, 0.22, 0.2, c2); }
+      else for (const [a, b] of [[-0.9, -0.4], [0, -0.4], [0.9, -0.4], [-0.45, 0.5], [0.45, 0.5]]) { Bx(a, 0.03, b, 0.8, 0.42, 0.7, '#b8b0a2'); put(P.roof, cx + a, 0.45, cz + b, 0.84, 0.14, 0.74, 0, '#6b5a4a'); }
+      return;
+    }
+    if (m.k === V.S_AVM) {
+      Bx(0, 0, 0, 2.94, 0.03, 1.94, '#8d8a84'); Bx(0.2, 0.03, -0.25, 2.3, 0.8, 1.3, '#e6e2da'); Bx(0.2, 0.83, -0.25, 2.34, 0.05, 1.34, '#5f6f78');
+      Bx(0.2, 0.1, 0.41, 2.0, 0.5, 0.02, '#6fc3e6'); Bx(0.2, 0.66, 0.42, 1.0, 0.12, 0.02, '#c0392b');
+      for (let k = -1.2; k <= 1.2; k += 0.3) Bx(k, 0.03, 0.75, 0.16, 0.1, 0.26, ['#c0392b', '#2e6fb0', '#eef0f2', '#2b2f33'][Math.round((k + 1.2) / 0.3) % 4]);
+      return;
+    }
+    if (m.k === V.S_TAPINAK) {
+      Bx(0, 0, 0, 1.94, 0.03, 1.94, '#cdbf9e'); Bx(0, 0.03, -0.1, 1.4, 0.12, 1.0, '#ddd3bd');
+      for (let k = -0.55; k <= 0.56; k += 0.22) for (const b of [-0.5, 0.3]) if (!(k > 0.2 && b > 0)) put(P.cyl, cx + k, 0.15, cz + b, 0.1, 0.8, 0.1, 0, '#eee6d6');
+      Bx(-0.15, 0.95, -0.1, 1.0, 0.1, 1.0, '#e2d9c4'); Bx(0.55, 0.15, 0.35, 0.3, 0.12, 0.12, '#cfc5ae'); Bx(0.6, 0.03, 0.7, 0.5, 0.3, 0.3, '#b9a47e');
+      return;
+    }
+    if (m.k === V.S_SARAY) {
+      Bx(0, 0, 0, 2.94, 0.03, 1.94, '#cdbf9e'); Bx(0, 0.03, -0.25, 2.7, 0.6, 1.0, '#f2ece0'); Bx(0, 0.63, -0.25, 2.74, 0.05, 1.04, '#c9b28e');
+      Bx(0, 0.03, -0.25, 0.8, 0.95, 1.04, '#f6f1e6'); put(P.blob, cx, 0.95, cz - 0.25, 0.6, 0.45, 0.6, 0, '#8fa6b8');
+      for (let k = -1.2; k <= 1.21; k += 0.24) Bx(k, 0.15, 0.255, 0.08, 0.3, 0.01, '#5a6b74');
+      for (const a of [-1, -0.5, 0.5, 1]) { put(P.box, cx + a, 0.03, cz + 0.7, 0.06, 0.2, 0.06, 0, PAL.trunk); put(P.cone, cx + a, 0.16, cz + 0.7, 0.32, 0.4, 0.32, 0, PAL.leaf[2]); }
       return;
     }
     if (m.k === V.S_NUCLEAR) {
@@ -846,6 +906,18 @@ export function createView(canvas, G0) {
     const c = V.cache(G), red = new THREE.Color('#ff3b1f');
     const tint = new THREE.Color({ transit: '#e07a3a', freight: '#8a6a42', water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6', fire: '#e8562c', fun: '#d6b13a', flood: '#3fa36a', mill: '#d9c24a' }[overlay] || '#2f8fe0');
     flatMesh('ov', ovMat, (q) => {
+      if (overlay === 'traffic') {
+        if (!c.jam) V.traffic(G, c);
+        const lo = new THREE.Color('#3fbf5a'), mid = new THREE.Color('#f2c230'), tmp = new THREE.Color();
+        for (let i = 0; i < N * N; i++) {
+          if (!G.r[i] || !c.net[i]) continue;
+          const g = c.jam[i] || 0; if (g < 0.3) continue;
+          if (g < 1) tmp.copy(lo).lerp(mid, (g - 0.3) / 0.7); else tmp.copy(mid).lerp(red, Math.min(1, (g - 1) / 0.6));
+          const x = i % N, y = (i / N) | 0, x0 = x - N / 2, z0 = y - N / 2;
+          q(x0, z0, x0 + 1, z0 + 1, 0.05, tmp.clone());
+        }
+        return;
+      }
       const cov = overlay && c[overlay]; if (!cov) return;
       for (let i = 0; i < N * N; i++) {
         if (G.t[i] === V.T_WATER || G.t[i] === V.T_ROCK) continue;

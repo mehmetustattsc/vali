@@ -68,6 +68,20 @@ const ICON = {
   wind: '<path d="M12 21V10M12 10 7 3M12 10l7 2M12 10l-4 6M9 21h6"/>',
   vfarm: '<rect x="7" y="3" width="10" height="18" rx="1"/><path d="M7 8h10M7 13h10M7 18h10M10 6c1-1 3-1 4 0M10 11c1-1 3-1 4 0"/>',
   fusion: '<circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="9" ry="4"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(120 12 12)"/>',
+  fun: '<circle cx="12" cy="12" r="9"/><path d="M8 14c1 2 2.4 3 4 3s3-1 4-3M9 9h.01M15 9h.01"/>',
+  fayton: '<circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M4 12h12l2-5h3M10 12V7h6"/>',
+  atolye: '<path d="M4 21V9l8-5 8 5v12zM8 21v-6h8v6M8 12h8"/>',
+  han: '<path d="M3 21V8h18v13M3 8l9-5 9 5M9 21v-5a3 3 0 0 1 6 0v5M6 11h2M16 11h2"/>',
+  tiyatro: '<path d="M5 4h9v6a4.5 4.5 0 0 1-9 0zM10 9h5v5a4.5 4.5 0 0 0 9 0V9h-4M7 7h.01M12 7h.01"/>',
+  saha: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14M3 9h3v6H3M21 9h-3v6h3"/><circle cx="12" cy="12" r="2.5"/>',
+  sinema: '<rect x="3" y="7" width="13" height="12" rx="1"/><path d="m16 11 5-3v10l-5-3M6 4l3 3M11 4l3 3"/>',
+  sanayi: '<path d="M3 21V12l6-3v3l6-3v3l6-3v12zM6 17h2M11 17h2M16 17h2"/>',
+  avm: '<path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2"/>',
+  lojistik: '<rect x="2" y="7" width="12" height="10"/><path d="M14 10h4l3 3v4h-7M6 20a2 2 0 1 0 0-4M17 20a2 2 0 1 0 0-4"/>',
+  gozcu: '<path d="M9 21V9h6v12M8 9h8l-4-6zM7 21h10M11 13h2"/>',
+  kizkule: '<path d="M10 17V8h4v9M9 8h6l-3-4zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20M8 17h8"/>',
+  saray: '<path d="M2 21h20M4 21V11h16v10M12 11V7M9 7a3 3 0 0 1 6 0M7 14v4M11 14v4M15 14v4M19 14v4M4 11l2-3M20 11l-2-3"/>',
+  tapinak: '<path d="M3 21h18M4 9h16L12 3zM6 9v9M10 9v9M14 9v9M18 9v9M4 18h16"/>',
   scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
 };
 const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
@@ -115,6 +129,20 @@ const TOOL_INFO = {
   wind: { name: 'Rüzgâr türbini', tip: '450 birim temiz elektrik, az yer kaplar.' },
   vfarm: { name: 'Dikey tarım kulesi', tip: 'Tek karede ayda 600 gıda; elektrik ister.' },
   fusion: { name: 'Füzyon santrali', tip: '2×2: 25.000 birim elektrik; çok pahalı.' },
+  fun: { name: 'Eğlence' },
+  fayton: { name: 'Fayton durağı', tip: 'Atlı faytonlar. Aynı yol üzerinde 12 kare içinde ikinci bir fayton durağı olunca aradaki yol hat olur, hattın iki yanı ulaşıma kavuşur.' },
+  atolye: { name: 'Dokuma atölyesi', tip: '24 işçiye iş, her ay küçük bir gelir. İlk dönemin fabrikası.' },
+  han: { name: 'Han', tip: '2×2 kervansaray: tüccarları çeker, bölge talebi ve dolayısıyla ticaret talebi artar; az da olsa ziyaretçi geliri. 150 nüfustan sonra.' },
+  tiyatro: { name: 'Tiyatro', tip: 'Çevresinde eğlence. 400 nüfustan sonra.' },
+  saha: { name: 'Futbol sahası', tip: '3×2: geniş bir alanda eğlence, maç günleri bilet geliri. 800 nüfustan sonra.' },
+  sinema: { name: 'Sinema', tip: 'Çevresinde eğlence; biraz elektrik ister.' },
+  sanayi: { name: 'Sanayi sitesi', tip: '3×2: 90 işçiye iş, her ay gelir; elektrik ister, çevresini kirletir.' },
+  avm: { name: 'Alışveriş merkezi', tip: '3×2: 180 esnafa iş, geniş bir alanda eğlence, bölge talebi artar. 5000 nüfustan sonra.' },
+  lojistik: { name: 'Lojistik merkezi', tip: '3×2: 110 işçiye iş ve gelir; otoyola bağlı şehirde bölge talebi çok artar.' },
+  gozcu: { name: 'Gözcü kulesi', tip: 'Şehirde bir tane. Ziyaretçi geliri ve meydan etkisi. Ambardan 250 taş ister.' },
+  kizkule: { name: 'Kız kulesi', tip: 'Şehirde bir tane, kıyıya yakın suya kurulur. Ziyaretçi geliri. Ambardan 300 taş ister.' },
+  saray: { name: 'Sahil sarayı', tip: '3×2, şehirde bir tane, su kıyısına kurulur. Büyük ziyaretçi geliri, 40 kişiye iş, geniş meydan etkisi. Ambardan 600 taş ve 300 kereste ister.' },
+  tapinak: { name: 'Antik tapınak', tip: '2×2 kazı ve müze, şehirde bir tane. Ziyaretçi geliri ve iş. Ambardan 150 kereste ister.' },
   gas: { name: 'Doğalgaz santrali', tip: '2×2: 2000 birim elektrik, kömür istemez ama gideri yüksektir.' },
   tram: { name: 'Tramvay durağı', tip: 'Çevresinde ulaşım sağlar. Apartmanlar için elektrikle birlikte ulaşım gerekir.' },
   dump: { name: 'Çöp alanı', tip: '2×2: 2.500 kişinin çöpünü toplar, yükseltilince 6.250 kişiye kadar. 1900 sonrası çöp toplanmazsa memnuniyet düşer, salgın riski artar.' },
@@ -124,10 +152,10 @@ const TOOL_INFO = {
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
   svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
-const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'smallsq', 'square', 'bigsq', 'police', 'fire', 'school', 'clinic', 'hippo', 'barracks', 'tram', 'dump', 'bus', 'lyceum', 'hospital', 'metro', 'recycle'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'power', 'hydro', 'factory', 'cement', 'gas', 'nuclear', 'tech', 'solar', 'wind', 'vfarm', 'fusion'] };
+const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'police', 'fire', 'school', 'clinic', 'barracks', 'fayton', 'tram', 'bus', 'metro', 'dump', 'lyceum', 'hospital', 'recycle'], fun: ['smallsq', 'square', 'bigsq', 'hippo', 'tiyatro', 'sinema', 'saha', 'avm', 'gozcu', 'kizkule', 'saray', 'tapinak'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'atolye', 'han', 'sanayi', 'lojistik', 'power', 'hydro', 'factory', 'cement', 'gas', 'nuclear', 'tech', 'solar', 'wind', 'vfarm', 'fusion'] };
 const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
-const COVER = { metro: 'transit', bus: 'transit', lyceum: 'school', hospital: 'clinic', tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
+const COVER = { fayton: 'transit', tiyatro: 'fun', sinema: 'fun', saha: 'fun', avm: 'fun', gozcu: 'square', saray: 'square', tapinak: 'square', metro: 'transit', bus: 'transit', lyceum: 'school', hospital: 'clinic', tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
 const LV_NAME = { 1: ['', 'Kulübe', 'Ev', 'Konak', 'Apartman', 'Blok apartman', 'Gökdelen'], 2: ['', 'Tarla', 'Çiftlik'], 3: ['', 'Dükkân', 'Çarşı', 'Han', 'İş hanı', 'Mağazalar', 'Ofis kulesi'] };
 const ZONE_NAME = { 1: 'Konut alanı', 2: 'Tarla alanı', 3: 'Ticaret alanı' };
 const SPEEDS = [0, 1, 2, 5];
@@ -195,7 +223,7 @@ function loadSave() { migrateLegacy(); const l = readIdx().sort((a, b) => b.t - 
 
 /* ---------- arayüz iskeleti ---------- */
 function buildChrome() {
-  $('#tools').innerHTML = ['pan', 'gov', 'way', 'res', 'farm', 'com', 'svc', 'ind', 'bulldoze', 'buy'].map(k =>
+  $('#tools').innerHTML = ['pan', 'gov', 'way', 'res', 'farm', 'com', 'svc', 'fun', 'ind', 'bulldoze', 'buy'].map(k =>
     `<button class="tool t-${k}" data-tool="${k}" aria-label="${TOOL_INFO[k].name}">${ico(k)}<span>${TOOL_INFO[k].name}</span></button>`).join('');
   $('#tools').addEventListener('click', e => {
     const b = e.target.closest('[data-tool]'); if (!b) return;
@@ -234,7 +262,7 @@ function setTool(t) {
   });
   $('#tools .t-gov').hidden = !!G.gov;
   clearPlan();
-  view.setOverlay(COVER[t] || (overlayPinned ? 'water' : null));
+  view.setOverlay(COVER[t] || overlayPinned || null);
   if (t !== 'pan') { selected = -1; view.select(-1); if (panelKind === 'tile') closePanel(); }
   showHint();
 }
@@ -286,25 +314,27 @@ function updateHud(force) {
   const sc = Math.max(12, T.P * 0.012), bar = (d) => Math.max(-1, Math.min(1, Math.tanh(d / sc)));      // büyük şehirde ölçek büyür
   const set = (sel, d) => { const el = $(sel), v = bar(d); el.style.setProperty('--v', Math.abs(v)); el.classList.toggle('neg', v < 0); };
   set('#dR i', T.dRes); set('#dF i', T.dFarm); set('#dC i', T.dCom);
-  if (panelKind === 'budget' || panelKind === 'city' || panelKind === 'proj') renderPanel();
+  if (panelKind === 'budget') { if (budgetMonth !== G.last && !taxDrag) { budgetMonth = G.last; renderPanel(); } }
+  else if (panelKind === 'city' || panelKind === 'proj') renderPanel();
   if (panelKind === 'tile' && selected >= 0) renderPanel();
 }
 
 /* ---------- paneller ---------- */
-let overlayPinned = false, cityTab = 'pop';
+let overlayPinned = false, cityTab = 'pop', budgetMonth = null, taxDrag = false;
 function togglePanel(kind) { if (panelKind === kind) closePanel(); else { panelKind = kind; renderPanel(); $('#panel').hidden = false; $('#app').classList.add('with-panel'); } }
 function closePanel() { panelKind = null; $('#panel').hidden = true; $('#app').classList.remove('with-panel'); if (selected >= 0) { selected = -1; view.select(-1); } }
 
 function renderPanel() {
   const head = $('#panel h2'), body = $('#panel .body'), keep = body.scrollTop, same = body.dataset.kind === panelKind + (panelKind === 'city' ? cityTab : '');
   if (panelKind === 'budget') { head.textContent = 'Bütçe'; body.innerHTML = budgetHtml(); bindBudget(); }
-  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { cityTab = b.dataset.tab; renderPanel(); } }; }
+  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { cityTab = b.dataset.tab; renderPanel(); } }; const j = $('#gJam'); if (j) j.onclick = () => { overlayPinned = overlayPinned === 'traffic' ? false : 'traffic'; setTool(tool); renderPanel(); }; }
   else if (panelKind === 'game') { head.textContent = 'Menü'; body.innerHTML = gameHtml(); bindGame(); }
   else if (panelKind === 'proj') { head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); }; }
   else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; const b = $('#gUp'); if (b) b.onclick = () => { const r = VL.upgrade(G, selected); if (!r.done) toast(r.err); else { view.syncBuild(); updateHud(true); renderPanel(); } }; }
   body.scrollTop = same ? keep : 0; body.dataset.kind = panelKind + (panelKind === 'city' ? cityTab : '');
 }
 
+function jamText(i) { const c = VL.cache(G); if (!c.jam) VL.traffic(G, c); const g = c.jam[i] || 0; return `<span class="${g > 1 ? 'neg' : ''}">%${Math.round(g * 100)}${g > 1.4 ? ' · tıkalı' : g > 1 ? ' · sıkışık' : ''}</span>`; }
 function row(label, val, cls = '') { return `<div class="row ${cls}"><span>${label}</span><b>${val}</b></div>`; }
 
 function budgetHtml() {
@@ -317,7 +347,7 @@ function budgetHtml() {
   ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}${e.loan ? row('Kredi taksiti', v(-e.loan)) : ''}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
   <h3>Vergi oranı <output id="taxOut">%${G.taxRate}</output></h3>
-  <input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}">
+  <div class="taxrow"><button class="taxb" data-d="-1" aria-label="Azalt">−</button><input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}"><button class="taxb" data-d="1" aria-label="Artır">+</button></div>
   <p class="note" id="taxNote">${taxNote()}</p>
   ${loanHtml()}`;
 }
@@ -336,13 +366,16 @@ function taxNote() {
 }
 function bindBudget() {
   const r = $('#tax'); if (!r) return;
-  r.oninput = () => { G.taxRate = +r.value; $('#taxOut').textContent = '%' + G.taxRate; $('#taxNote').textContent = taxNote(); };
+  const setTax = (v) => { G.taxRate = Math.max(0, Math.min(VL.B.maxTax, v)); r.value = G.taxRate; $('#taxOut').textContent = '%' + G.taxRate; $('#taxNote').textContent = taxNote(); };
+  r.oninput = () => setTax(+r.value);
+  r.onpointerdown = () => { taxDrag = true; }; const up = () => { taxDrag = false; }; r.onpointerup = up; r.onpointercancel = up; r.onblur = up;
+  for (const b of document.querySelectorAll('.taxb')) b.onclick = () => setTax(G.taxRate + +b.dataset.d);
   const done = (res) => { if (res.err) toast(res.err); else { updateHud(true); renderPanel(); } };
   for (const b of document.querySelectorAll('[data-loan]')) b.onclick = () => done(VL.takeLoan(G, +b.dataset.loan));
   const p = $('#loanPay'); if (p) p.onclick = () => done(VL.payLoan(G));
 }
 
-const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', fun: 'Eğlence', transit: 'Ulaşım', power: 'Elektrik', waste: 'Çöp', army: 'Ordu', dirt: 'Maden tozu', event: 'Afet', gov: 'Valilik' };
+const FACTOR = { base: 'Temel', water: 'Su', jobs: 'İş', tax: 'Vergi', food: 'Gıda', market: 'Pazar', safety: 'Asayiş', health: 'Sağlık', edu: 'Eğitim', square: 'Meydan', fun: 'Eğlence', transit: 'Ulaşım', traffic: 'Trafik', power: 'Elektrik', waste: 'Çöp', army: 'Ordu', dirt: 'Maden tozu', event: 'Afet', gov: 'Valilik' };
 const GDESC = {
   c: 'Tarlalarda çalışır.',
   i: 'Ocak, maden, fabrika, liman ve hizmet binalarında çalışır.',
@@ -366,7 +399,8 @@ function cityHtml() {
     VL.GRP.filter(g => G.grp[g] || T.jobs[g]).map(g => grp(g, VL.GRP_NAME[g], T.jobs[g])).join('');
   else if (cityTab === 'prod') h += `<h3>Gıda (aylık)</h3>${row('Üretim', fmt(G.food.prod))}${T.fish ? row('Balık ve hayvancılık', fmt(T.fish)) : ''}${row('Tüketim', fmt(G.food.cons))}${row(G.food.net >= 0 ? 'Fazla (satılır)' : 'Açık', sgn(G.food.net), G.food.net < 0 ? 'neg' : '')}` + storeHtml();
   else if (cityTab === 'infra') h += (T.yr >= 1890 ? '<h3>Elektrik ve çöp</h3>' + row('Elektrik (üretim / tüketim)', fmt(T.pcap) + ' / ' + fmt(T.puse), T.power < 0.9 ? 'neg' : '') + row('Çöp toplama', '%' + Math.round(T.waste * 100), T.waste < 0.9 && T.yr >= 1900 ? 'neg' : '') : '<p class="note">Elektrik ve çöp 1890’dan sonra önem kazanır.</p>') +
-    '<h3>Hizmet kapsamı (halkın yüzde kaçı)</h3>' + [['water', 'Su'], ['police', 'Asayiş'], ['fire', 'İtfaiye'], ['school', 'Eğitim'], ['clinic', 'Sağlık'], ['transit', 'Ulaşım'], ['square', 'Meydan'], ['fun', 'Eğlence']].map(([k, n]) => row(n, '%' + Math.round((T.cov[k] || 0) * 100), (T.cov[k] || 0) < 0.6 ? 'neg' : '')).join('') + riskHtml();
+    '<h3>Hizmet kapsamı (halkın yüzde kaçı)</h3>' + [['water', 'Su'], ['police', 'Asayiş'], ['fire', 'İtfaiye'], ['school', 'Eğitim'], ['clinic', 'Sağlık'], ['transit', 'Ulaşım'], ['square', 'Meydan'], ['fun', 'Eğlence']].map(([k, n]) => row(n, '%' + Math.round((T.cov[k] || 0) * 100), (T.cov[k] || 0) < 0.6 ? 'neg' : '')).join('') +
+    '<h3>Trafik</h3>' + row('Sıkışık yollar', '%' + Math.round(((G.tr || {}).jammed || 0) * 100), ((G.tr || {}).jammed || 0) > 0.15 ? 'neg' : '') + row('Trafikten etkilenen halk', '%' + Math.round(((G.tr || {}).pen || 0) * 100)) + `<button class="wide ${overlayPinned === 'traffic' ? 'on' : ''}" id="gJam">${ico('layers')} Trafik katmanı</button><p class="note">Yoğunluğu ara yollar, toplu taşıma hatları (iki durak arası) ve metro azaltır. Otomobil 1910’dan sonra yayılır.</p>` + riskHtml();
   else h += `<h3>Talep</h3>${row('Konut', dem(T.dRes))}${row('Tarla', dem(T.dFarm))}${row('Ticaret', dem(T.dCom))}${row('Bölgenin talebi', T.outside ? fmt(G.reg) : 'Dış yol yok', T.outside ? '' : 'neg')}
     <p class="note">Bölge talebi, çevredeki köy ve kasabaların ürünlerine ilgisidir. Memnun ve iyi bağlantılı bir şehirde zamanla artar.</p>`;
   return h;
@@ -420,9 +454,11 @@ function openFlyout(g, btn) {
   f.innerHTML = GROUPS[g].map(k => {
     const d = VL.SVD[k], railLock = (k === 'rail' || (d && d.needRail)) && !(G.fx && G.fx.rail), portLock = k === 'pier' && !VL.cache(G).cnt.port;
     const yearLock = d && d.year && VL.yearOf(G) < d.year;
-    const locked = yearLock || railLock || portLock || (d && d.minP && P < d.minP);
+    const have = d && d.unique && VL.cache(G).cnt[k];
+    const locked = have || yearLock || railLock || portLock || (d && d.minP && P < d.minP);
     const cost = k === 'road' ? VL.B.cost.road + '/kare' : k === 'rail' ? VL.B.cost.rail + '/kare' : d.line ? d.cost + '/kare' : fmt(d.cost);
-    const sub = locked ? (yearLock ? d.year + ' yılında açılır' : railLock ? 'Demiryolu görevinden sonra' : portLock ? 'Önce liman' : d.minP + ' nüfustan sonra') : cost;
+    const resTxt = d && d.res ? Object.keys(d.res).map(r => ' + ' + d.res[r] + ' ' + VL.RES_NAME[r].toLocaleLowerCase('tr')).join('') : '';
+    const sub = have ? 'Şehirde var' : locked ? (yearLock ? d.year + ' yılında açılır' : railLock ? 'Demiryolu görevinden sonra' : portLock ? 'Önce liman' : d.minP + ' nüfustan sonra') : cost + resTxt;
     return `<button data-tool="${k}" class="${k === tool ? 'on' : ''}" ${locked ? 'disabled' : ''}>${ico(k)}<span><b>${TOOL_INFO[k].name}</b><small>${sub}</small></span></button>`;
   }).join('');
   f.hidden = false;
@@ -444,7 +480,7 @@ function gameHtml() {
   return `${canFull() && !installed() ? `<button class="wide" id="gFull">${ico('full')} ${isFull() ? 'Tam ekrandan çık' : 'Tam ekran'}</button>` : ''}
   <button class="wide" id="gSave">Kaydet</button>
   <button class="wide" id="gName">Şehrin adı: ${G.name || MAP_NAME[G.map] || 'Şehir'}</button>
-  <button class="wide ${overlayPinned ? 'on' : ''}" id="gWater">${ico('layers')} Su kapsama katmanı</button>
+  <button class="wide ${overlayPinned === 'water' ? 'on' : ''}" id="gWater">${ico('layers')} Su kapsama katmanı</button>
   <button class="wide ${autoOn() ? 'on' : ''}" id="gAuto">Alan çizerken otomatik sokak: ${autoOn() ? 'açık' : 'kapalı'}</button>
   <button class="wide ${G.opt && G.opt.disasters ? 'on' : ''}" id="gDis">Doğal afetler: ${G.opt && G.opt.disasters ? 'açık' : 'kapalı'}</button>
   <button class="wide" id="gMenu">Ana menü</button>
@@ -456,7 +492,7 @@ function bindGame() {
   $('#gSave').onclick = () => { if (save()) toast('Kaydedildi.'); };
   $('#gName').onclick = () => { const n = prompt('Şehrin adı', G.name || MAP_NAME[G.map] || ''); if (n && n.trim()) { G.name = n.trim().slice(0, 24); save(); renderPanel(); } };
   if ($('#gFull')) $('#gFull').onclick = () => { fullscreen(!isFull()); setTimeout(renderPanel, 400); };
-  $('#gWater').onclick = () => { overlayPinned = !overlayPinned; setTool(tool); renderPanel(); };
+  $('#gWater').onclick = () => { overlayPinned = overlayPinned === 'water' ? false : 'water'; setTool(tool); renderPanel(); };
   $('#gAuto').onclick = () => { G.opt = G.opt || {}; G.opt.autoRoads = !autoOn(); renderPanel(); };
   $('#gDis').onclick = () => { G.opt.disasters = !G.opt.disasters; renderPanel(); };
   $('#gMenu').onclick = () => { save(); closePanel(); setSpeed(0); showMenu(!!readIdx().length); };
@@ -484,7 +520,13 @@ function tileInfo(i) {
     let h = row('Yola bağlı', yes(served));
     if (up) h += row('Seviye', up.lv + ' / ' + up.max) + (up.lv > 1 ? row('Üretim çarpanı', '×' + up.mul) : '');
     if (d.radius) h += row('Etki yarıçapı', Math.round(d.radius * VL.RADM[up ? up.lv : 1]) + ' kare');
+    if (d.route) { const n = c.stopLink[i] || 0; h += row('Hat menzili', Math.round(d.route * VL.RADM[up ? up.lv : 1]) + ' kare') + row('Bağlı durak', n ? n : '<span class="neg">Yok</span>'); if (!n) h += `<p class="note neg">Tek başına durak işe yaramaz: aynı yol ağında ${Math.round(d.route * VL.RADM[up ? up.lv : 1])} kare içine ikinci bir ${d.name.toLocaleLowerCase('tr')} kur.</p>`; }
     if (d.jobs) h += row('Geçindirdiği kişi', Math.round(d.jobs * (up ? up.jmul : 1)));
+    if (d.com) h += row('Esnafa iş', Math.round(d.com * (up ? up.mul : 1)));
+    if (d.inc) h += row('Gelir', '≈' + fmt(d.inc * (up ? up.mul : 1)) + '/ay');
+    if (d.tour) h += row('Ziyaretçi geliri', '≈' + fmt(d.tour[0] + G.reg * d.tour[1]) + '/ay');
+    if (key === 'han') h += row('Ziyaretçi geliri', '≈12/ay') + row('Bölge talebine', '+1/ay');
+    if (key === 'saha') h += row('Bilet geliri', '≈' + fmt(20 + Math.sqrt(VL.totals(G).P) * 0.8) + '/ay');
     if (key === 'ranch') h += row('Aylık gıda', VL.B.ranchFood);
     if (key === 'power') h += row('Elektrik', VL.B.power.plant + ' birim') + row('Kömür tüketimi', VL.B.power.coal + '/ay' + (G.flags.noCoal ? ' · <span class="neg">kömür yok</span>' : ''));
     if (key === 'hydro') h += row('Elektrik', VL.B.power.hydro + ' birim');
@@ -507,7 +549,7 @@ function tileInfo(i) {
       h += '<p class="note">Tam üretim için yeterince işçi gerekir. Yakınındaki evler toz ve gürültüden dolayı büyüyemez. Raya ya da yük istasyonuna yakın olursa malı daha pahalıya satılır.</p>';
     }
     h += `<p class="note">${TOOL_INFO[key].tip}</p>`;
-    if (up && up.lv < up.max) h = `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${d.out || key === 'ranch' || key === 'power' || key === 'hydro' || key === 'gas' || key === 'factory' ? 'Üretim ×' + up.nextMul : key === 'dump' ? 'Kapasite ×' + up.nextMul : 'Etki yarıçapı ' + Math.round(d.radius * VL.RADM[up.lv + 1]) + ' kare'} olur; daha çok işçi ister, gideri artar.</p>` + h;
+    if (up && up.lv < up.max) h = `<button class="wide primary" id="gUp" ${G.money < up.cost ? 'disabled' : ''}>Seviye ${up.lv + 1}'e yükselt · ${fmt(up.cost)}</button><p class="note">${d.out || key === 'ranch' || key === 'power' || key === 'hydro' || key === 'gas' || key === 'factory' ? 'Üretim ×' + up.nextMul : key === 'dump' ? 'Kapasite ×' + up.nextMul : d.radius ? 'Etki yarıçapı ' + Math.round(d.radius * VL.RADM[up.lv + 1]) + ' kare' : d.route ? 'Hat menzili ' + Math.round(d.route * VL.RADM[up.lv + 1]) + ' kare' : 'Üretim ×' + up.nextMul} olur; daha çok işçi ister, gideri artar.</p>` + h;
     return { title: d.name + (up && up.lv > 1 ? ' · seviye ' + up.lv : ''), html: h };
   }
   const mk = G.mark && G.mark[i];
@@ -519,7 +561,7 @@ function tileInfo(i) {
   if (G.r[i]) {
     if (G.r[i] === 3) return { title: 'Otoyol', html: `${row('Şehre bağlı', yes(c.motorOut))}<p class="note">Komşu şehirlere giden otoyol. Şehrin yollarını buraya bağla; bağlanınca bölge talebi her ay çok daha hızlı artar.</p>` };
     if (G.r[i] === 2) return { title: 'Dış yol', html: '<p class="note">Kasabaya göçmenler ve tüccarlar bu yoldan gelir. Şehrin yol ağını buraya bağla.</p>' };
-    return { title: t === VL.T_WATER ? 'Köprü' : t === VL.T_ROCK ? 'Tünel' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}` };
+    return { title: t === VL.T_WATER ? 'Köprü' : t === VL.T_ROCK ? 'Tünel' : 'Yol', html: `${row('Aylık bakım', fmt(t === VL.T_WATER ? VL.B.upkeep.bridge : VL.B.upkeep.road))}${row('Ağa bağlı', yes(c.net[i]))}${c.net[i] ? row('Trafik yoğunluğu', jamText(i)) : ''}${c.line[i] ? row('Toplu taşıma hattı', 'Var') : ''}` };
   }
   if (z) {
     const building = lv > 0 && G.pg[i] < 1, name = lv ? LV_NAME[z][lv] : ZONE_NAME[z];

@@ -69,6 +69,13 @@ Tasarım belgesi: Claude Docs'taki "Vali — Oyun Tasarım Belgesi".
 - Her haritada başlangıç tarafında, kendi arazinde ve karadan ulaşılan küçük bir tepe var (taş ocağı, kömür ve demir için). Büyük göl ve deniz kıyısında artık gölü aşmak gerekmez.
 - Banka kredisi (Bütçe paneli): sınır gelire ve itibara bağlı, 10 yıl eşit taksit, faiz dönemle düşer (%9 → %4). Aynı anda bir kredi; erken kapatınca itibar +2.
 
+## Sürüm 0.10
+- Yeni Eğlence menüsü: meydanlar, hipodrom, tiyatro (1850), futbol sahası (1910), sinema (1925), alışveriş merkezi (1990) ve şehirde birer tane yapılabilen turizm yapıları: gözcü kulesi, Kız kulesi, sahil sarayı, antik tapınak (ziyaretçi geliri, iş; ambardan taş ve kereste ister).
+- Her döneme işyeri: dokuma atölyesi ve han (1850), sanayi sitesi (1950), lojistik merkezi (2015). Han ve AVM bölge talebini, dolayısıyla ticaret talebini artırır.
+- Toplu taşıma hatları: fayton (1850), tramvay ve otobüs durakları artık çember değil, aynı yol ağında menzil içindeki iki durak arasındaki yolu kapsar; hattın iki yanı ulaşıma kavuşur. Metro çevresini kapsamaya devam eder.
+- Trafik: konutlar ve dükkânlar yolculuk üretir (1910'dan sonra otomobil artar). Yol azsa yoğunluk artar ve memnuniyet düşer; ara yollar, hatlar ve metro çözer. Şehir › Altyapı'da trafik katmanı.
+- Hayvan çiftliği artık tarlaya bitişik olmak zorunda değil. Vergi çubuğu sürüklenebiliyor, yanında − / + düğmeleri. Üst çubuk sabit genişlikte, ekrandan taşmıyor.
+
 ## Denge
 Bütün sayılar `src/engine.js` içindeki `B` tablosundadır. Oranlar 1850'ye yakın tutuldu: nüfusun yaklaşık %60'ı tarımla geçinir, kişi başı ayda bir birim gıda tüketilir. Şehrin büyüme motoru "bölge talebi"dir: dış yola bağlı ve memnun bir şehrin ürünlerine çevreden talep zamanla artar.
 

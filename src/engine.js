@@ -15,7 +15,8 @@ const Z_NONE = 0, Z_RES = 1, Z_FARM = 2, Z_COM = 3;
 const S_NONE = 0, S_FOUNTAIN = 1, S_POLICE = 2, S_SCHOOL = 3, S_CLINIC = 4, S_LUMBER = 5, S_QUARRY = 6, S_COAL = 7, S_IRON = 8,
   S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12, S_SMALLSQ = 13, S_BIGSQ = 14, S_HIPPO = 15, S_FIRE = 16, S_LEVEE = 17,
   S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28, S_RANCH = 29, S_BUS = 30, S_CEMENT = 31, S_LYCEUM = 32, S_HOSPITAL = 33, S_GAS = 34,
-  S_METRO = 35, S_RECYCLE = 36, S_NUCLEAR = 37, S_TECH = 38, S_SOLAR = 39, S_WIND = 40, S_VFARM = 41, S_FUSION = 42;
+  S_METRO = 35, S_RECYCLE = 36, S_NUCLEAR = 37, S_TECH = 38, S_SOLAR = 39, S_WIND = 40, S_VFARM = 41, S_FUSION = 42,
+  S_FAYTON = 43, S_ATOLYE = 44, S_HAN = 45, S_SANAYI = 46, S_AVM = 47, S_LOJ = 48, S_TIYATRO = 49, S_SAHA = 50, S_SINEMA = 51, S_TAPINAK = 52, S_KIZKULE = 53, S_SARAY = 54, S_GOZCU = 55;
 // Maden yatakları (G.dep)
 const D_COAL = 1, D_IRON = 2;
 const RES = ['kereste', 'tas', 'komur', 'demir', 'cimento'];
@@ -56,6 +57,7 @@ const B = {
   deliverPerMonth: 45,               // şantiyeye ayda taşınan en çok kaynak (her tür için; demiryoluyla iki katı)
   deliverMoney: 500,                 // görevin hazine payından ayda aktarılan en çok para
   taxNeutral: 10,
+  traffic: { cap: 80, win: 3 },       // yol karesi başına taşınabilen yolculuk; yoğunluk 7×7 pencerede ölçülür
   maxTax: 25,
 };
 
@@ -75,7 +77,7 @@ const SVD = {
   port: { code: S_PORT, name: 'Liman', cost: 900, upkeep: 10, jobs: 14, w: 2, h: 2, minP: 250, needWater: true },
   pier: { code: S_PIER, name: 'İskele', cost: 120, upkeep: 1, jobs: 4, onWater: true },
   // 1930 sonrası
-  bus: { code: S_BUS, name: 'Otobüs durağı', cost: 250, upkeep: 4, radius: 9, cover: 'transit', jobs: 3, year: 1930 },
+  bus: { code: S_BUS, name: 'Otobüs durağı', cost: 250, upkeep: 4, route: 22, cover: 'transit', jobs: 3, year: 1930 },
   lyceum: { code: S_LYCEUM, name: 'Lise', edu: true, cost: 900, upkeep: 18, radius: 11, cover: 'school', jobs: 16, year: 1930 },
   hospital: { code: S_HOSPITAL, name: 'Hastane', edu: true, cost: 1400, upkeep: 25, radius: 13, cover: 'clinic', jobs: 24, year: 1930 },
   cement: { code: S_CEMENT, name: 'Çimento fabrikası', cost: 900, jobs: 20, out: 'cimento', rate: 30, need: 'rock', year: 1930 },
@@ -90,12 +92,12 @@ const SVD = {
   wind: { code: S_WIND, name: 'Rüzgâr türbini', cost: 2200, upkeep: 4, jobs: 2, year: 2010 },
   vfarm: { code: S_VFARM, name: 'Dikey tarım kulesi', cost: 7000, upkeep: 20, jobs: 25, year: 2030 },
   fusion: { code: S_FUSION, name: 'Füzyon santrali', cost: 60000, upkeep: 400, jobs: 120, w: 2, h: 2, year: 2060 },
-  ranch: { code: S_RANCH, name: 'Hayvan çiftliği', cost: 2500, upkeep: 15, jobs: 30, w: 3, h: 2, minP: 300, needFarm: true },
+  ranch: { code: S_RANCH, name: 'Hayvan çiftliği', cost: 2500, upkeep: 15, jobs: 30, w: 3, h: 2, minP: 300 },
   // 1890 sonrası
   power: { code: S_POWER, name: 'Kömür santrali', cost: 1500, upkeep: 20, jobs: 14, w: 2, h: 2, year: 1890, dirty: 3 },
   hydro: { code: S_HYDRO, name: 'Su santrali', cost: 2200, upkeep: 10, jobs: 6, onWater: true, year: 1890 },
   factory: { code: S_FACTORY, name: 'Fabrika', cost: 1200, upkeep: 10, jobs: 40, w: 2, h: 2, year: 1890, dirty: 4 },
-  tram: { code: S_TRAM, name: 'Tramvay durağı', cost: 350, upkeep: 5, radius: 6, cover: 'transit', jobs: 4, year: 1895 },
+  tram: { code: S_TRAM, name: 'Tramvay durağı', cost: 350, upkeep: 5, route: 18, cover: 'transit', jobs: 4, year: 1895 },
   dump: { code: S_DUMP, name: 'Çöp alanı', cost: 400, upkeep: 8, jobs: 6, w: 2, h: 2, year: 1890, dirty: 3 },
   police: { code: S_POLICE, name: 'Karakol', cost: 320, upkeep: 10, radius: 8, cover: 'police', jobs: 8 },
   school: { code: S_SCHOOL, name: 'Mektep', edu: true, cost: 380, upkeep: 12, radius: 7, cover: 'school', jobs: 8 },
@@ -104,6 +106,20 @@ const SVD = {
   quarry: { code: S_QUARRY, name: 'Taş ocağı', cost: 220, jobs: 12, out: 'tas', rate: 32, need: 'rock' },
   coal: { code: S_COAL, name: 'Kömür ocağı', cost: 360, jobs: 14, out: 'komur', rate: 32, need: 'coal' },
   iron: { code: S_IRON, name: 'Demir madeni', cost: 420, jobs: 14, out: 'demir', rate: 28, need: 'iron' },
+  // Her döneme işyeri, eğlence ve turizm
+  fayton: { code: S_FAYTON, name: 'Fayton durağı', cost: 120, upkeep: 2, route: 12, cover: 'transit', jobs: 2, year: 1850 },
+  atolye: { code: S_ATOLYE, name: 'Dokuma atölyesi', cost: 450, jobs: 24, year: 1850, dirty: 1, inc: 28 },
+  han: { code: S_HAN, name: 'Han', cost: 1400, upkeep: 6, jobs: 16, w: 2, h: 2, year: 1850, minP: 150 },
+  tiyatro: { code: S_TIYATRO, name: 'Tiyatro', cost: 600, upkeep: 8, radius: 7, cover: 'fun', jobs: 6, year: 1850, minP: 400 },
+  saha: { code: S_SAHA, name: 'Futbol sahası', cost: 1600, upkeep: 10, radius: 12, cover: 'fun', jobs: 8, w: 3, h: 2, year: 1910, minP: 800 },
+  sinema: { code: S_SINEMA, name: 'Sinema', cost: 900, upkeep: 8, radius: 8, cover: 'fun', jobs: 6, year: 1925, minP: 600 },
+  sanayi: { code: S_SANAYI, name: 'Sanayi sitesi', cost: 5000, upkeep: 20, jobs: 90, w: 3, h: 2, year: 1950, dirty: 2, inc: 180 },
+  avm: { code: S_AVM, name: 'Alışveriş merkezi', cost: 14000, upkeep: 40, com: 180, radius: 10, cover: 'fun', w: 3, h: 2, year: 1990, minP: 5000 },
+  lojistik: { code: S_LOJ, name: 'Lojistik merkezi', cost: 12000, upkeep: 30, jobs: 110, w: 3, h: 2, year: 2015, inc: 250 },
+  gozcu: { code: S_GOZCU, name: 'Gözcü kulesi', cost: 1500, res: { tas: 250 }, upkeep: 3, radius: 6, cover: 'square', jobs: 4, year: 1850, minP: 200, unique: true, tour: [25, 0.08] },
+  kizkule: { code: S_KIZKULE, name: 'Kız kulesi', cost: 2500, res: { tas: 300 }, upkeep: 4, jobs: 6, onWater: true, year: 1860, minP: 300, unique: true, tour: [35, 0.12] },
+  saray: { code: S_SARAY, name: 'Sahil sarayı', cost: 9000, res: { tas: 600, kereste: 300 }, upkeep: 20, radius: 10, cover: 'square', jobs: 40, w: 3, h: 2, needWater: true, year: 1860, minP: 900, unique: true, tour: [90, 0.25] },
+  tapinak: { code: S_TAPINAK, name: 'Antik tapınak', cost: 3000, res: { kereste: 150 }, upkeep: 6, radius: 6, cover: 'square', jobs: 12, w: 2, h: 2, year: 1870, minP: 400, unique: true, tour: [45, 0.12] },
   site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
 const dims = (d) => [d.w || 1, d.h || 1];
@@ -113,14 +129,14 @@ const UP = { out: [0, 1, 1.75, 2.5], jobs: [0, 1, 1.4, 1.8], cost: [0, 0, 1.5, 2
 const GRP = ['c', 'i', 'e', 'o', 'v'];
 const GRP_NAME = { c: 'Çiftçiler', i: 'İşçiler', e: 'Esnaf ve tüccarlar', o: 'Eğitimliler', v: 'Varlıklılar' };
 const GW = {
-  c: { edu: 0.6 },
-  i: { fun: 1.2 },
-  e: { safety: 1.5, power: 1.3, transit: 1.3 },
-  o: { edu: 1.6, tax: 1.2, square: 1.2, power: 1.3 },
-  v: { tax: 1.6, safety: 1.5, square: 1.6, fun: 1.5, dirt: 2.5, edu: 1.2, power: 1.3 },
+  c: { edu: 0.6, traffic: 0.4 },
+  i: { fun: 1.2, traffic: 0.8 },
+  e: { safety: 1.5, power: 1.3, transit: 1.3, traffic: 1.3 },
+  o: { edu: 1.6, tax: 1.2, square: 1.2, power: 1.3, traffic: 1.2 },
+  v: { traffic: 1.5, tax: 1.6, safety: 1.5, square: 1.6, fun: 1.5, dirt: 2.5, edu: 1.2, power: 1.3 },
 };
 const RADM = [0, 1, 1.35, 1.7];      // hizmet binalarında seviyeye göre etki yarıçapı
-const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas', 'metro', 'nuclear', 'recycle', 'tech', 'solar', 'wind', 'vfarm', 'fusion'];
+const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas', 'metro', 'nuclear', 'recycle', 'tech', 'solar', 'wind', 'vfarm', 'fusion', 'fayton', 'atolye', 'han', 'tiyatro', 'saha', 'sinema', 'sanayi', 'avm', 'lojistik'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
@@ -146,7 +162,7 @@ const LANDMARK = {
   victory: { name: 'Zafer anıtı', jobs: 4, text: 'Şehir genelinde kalıcı memnuniyet; geniş meydan etkisi ve ziyaretçi geliri.' },
   tower: { name: 'Saat kulesi', jobs: 6, text: 'Geniş bir alanda meydan etkisi verir; ziyaretçiler her ay hazineye gelir bırakır.' },
 };
-const isMultiCode = (code) => code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK ||
+const isMultiCode = (code) => code === S_HAN || code === S_SANAYI || code === S_AVM || code === S_LOJ || code === S_SAHA || code === S_TAPINAK || code === S_SARAY || code === S_SQUARE || code === S_BIGSQ || code === S_HIPPO || code === S_BARRACKS || code === S_SITE || code === S_LANDMARK ||
   code === S_PSTATION || code === S_FSTATION || code === S_PORT || code === S_POWER || code === S_FACTORY || code === S_DUMP || code === S_RANCH || code === S_GAS || code === S_NUCLEAR || code === S_RECYCLE || code === S_TECH || code === S_SOLAR || code === S_FUSION;
 const CODE2KEY = {}; for (const k in SVD) CODE2KEY[SVD[k].code] = k;
 
@@ -479,7 +495,7 @@ function rebuild(G) {
   const N = G.N, n = N * N;
   const U = () => new Uint8Array(n);
   const c = { dirty: false, net: U(), served: U(), water: U(), police: U(), school: U(), clinic: U(), square: U(), dirt: U(),
-    fire: U(), fun: U(), flood: U(), mill: U(), transit: U(), freight: U(), rnet: U(), railOut: false, station: -1,
+    fire: U(), fun: U(), flood: U(), mill: U(), transit: U(), metro: U(), line: U(), stopLink: {}, freight: U(), rnet: U(), railOut: false, station: -1,
     outside: false, roads: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, eduJobs: 0, ind: [], zones: { 1: [], 2: [], 3: [] } };
   // Yol ağı: Valiliğe değen yollardan başlayan arama
   const q = [];
@@ -503,6 +519,7 @@ function rebuild(G) {
   // Tekil binalar: kapsama, iş, üretim
   c.upExtra = 0;
   c.act = {};      // yola bağlı, çalışan santral, fabrika, durak ve çöp alanları
+  const stops = [];
   const unit = (key, i, ok, center) => {
     const d = SVD[key];
     c.cnt[key] = (c.cnt[key] || 0) + 1;
@@ -511,6 +528,8 @@ function rebuild(G) {
     if (d.jobs && ok) c[d.edu ? 'eduJobs' : 'svcJobs'] += Math.round(d.jobs * UP.jobs[lv]);
     if (d.upkeep && lv > 1) c.upExtra += d.upkeep * (lv - 1);
     if (d.dirty) around(G, center, d.dirty, j => { c.dirt[j] = 1; });
+    if (d.route && ok) stops.push({ i, key, L: Math.round(d.route * RADM[lv]) });
+    if (key === 'metro') around(G, center, Math.round(d.radius * RADM[lv]), j => { c.metro[j] = 1; });
     if ((d.year || key === 'ranch') && ok) c.act[key] = (c.act[key] || 0) + mul;
     if (d.out) {
       const f = ok ? resourceFactor(G, i, d.need) : 0;
@@ -529,6 +548,7 @@ function rebuild(G) {
     const tiles = multiTiles(G, m);
     unit(key, tiles[0], tiles.some(j => c.served[j]), idx(G, m.x + (m.w >> 1), m.y + (m.h >> 1)));
   }
+  routes(G, c, stops);
   // Görev anıtları da çalışır: iş verir ve şehre hizmet eder
   c.tourism = 0; c.air = 0; c.stadium = 0; c.expo = 0; c.hsr = 0;
   c.hippos = G.multi.filter(m => m.k === S_HIPPO && multiTiles(G, m).some(j => c.served[j])).length;
@@ -547,7 +567,7 @@ function rebuild(G) {
     if (m.pid === 'dam') { if (ok) c.act.lmDam = 1; c.flood.fill(1); }
     if (m.pid === 'airport' && ok) c.air = 1;
     if (m.pid === 'stadium') { c.fun.fill(1); if (ok) c.stadium = 1; }
-    if (m.pid === 'metroline') c.transit.fill(1);
+    if (m.pid === 'metroline') { c.transit.fill(1); c.metro.fill(1); }
     if (m.pid === 'techuni') c.school.fill(1);
     if (m.pid === 'climate') { c.flood.fill(1); around(G, ctr, 14, j => { c.square[j] = 1; }); }
     if (m.pid === 'renew' && ok) c.act.lmRenew = 1;
@@ -562,6 +582,56 @@ function rebuild(G) {
   for (const m of G.multi) if (m.k === S_LANDMARK && m.pid === 'aqueduct') around(G, idx(G, m.x, m.y) + G.N + 1, 16, j => { c.water[j] = 1; });
   CACHE.set(G, c);
   return c;
+}
+
+/* Otobüs, tramvay ve fayton hatları: aynı türden iki durak yol üzerinden menzil içindeyse aradaki yollar hat olur.
+   Hattın iki yanındaki iki kare ulaşım kapsamına girer. Tek başına duran durak işe yaramaz. */
+function routes(G, c, stops) {
+  const N = G.N, n = N * N, isR = (j) => G.r[j] && c.net[j];
+  const maxL = {}; for (const s of stops) maxL[s.key] = Math.max(maxL[s.key] || 0, s.L);
+  const runs = stops.map(s => {
+    const dist = new Int16Array(n).fill(-1), list = [];
+    for (const j of neigh4(G, s.i)) if (isR(j) && dist[j] < 0) { dist[j] = 0; list.push(j); }
+    const L = maxL[s.key];
+    for (let h = 0; h < list.length; h++) { const i = list[h]; if (dist[i] >= L) continue; for (const j of neigh4(G, i)) if (isR(j) && dist[j] < 0) { dist[j] = dist[i] + 1; list.push(j); } }
+    return { s, dist, list };
+  });
+  for (let a = 0; a < runs.length; a++) for (let b = a + 1; b < runs.length; b++) {
+    const A = runs[a], Q = runs[b]; if (A.s.key !== Q.s.key) continue;
+    const lim = Math.max(A.s.L, Q.s.L);
+    if (Math.abs(A.s.i % N - Q.s.i % N) + Math.abs(((A.s.i / N) | 0) - ((Q.s.i / N) | 0)) > lim + 2) continue;
+    let d = 1e9; for (const j of Q.list) { if (Q.dist[j] > 0) break; if (A.dist[j] >= 0) d = Math.min(d, A.dist[j]); }
+    if (d > lim) continue;
+    for (const j of A.list) if (Q.dist[j] >= 0 && A.dist[j] + Q.dist[j] <= d + 2) c.line[j] = 1;
+    c.stopLink[A.s.i] = (c.stopLink[A.s.i] || 0) + 1; c.stopLink[Q.s.i] = (c.stopLink[Q.s.i] || 0) + 1;
+  }
+  for (let j = 0; j < n; j++) if (c.line[j]) around(G, j, 2, k => { c.transit[k] = 1; });
+}
+
+/* Trafik: her konut ve dükkân yolculuk üretir (dönemle otomobil artar, toplu taşıma azaltır).
+   Bir yerin yoğunluğu = çevresindeki 7×7 alanda yolculuk / (yol karesi × kapasite). Ara yollar ve hatlar yoğunluğu düşürür. */
+function traffic(G, c) {
+  c = c || cache(G);
+  const N = G.N, n = N * N, M = N + 1, car = 0.25 + 0.75 * ramp(yearOf(G), 1910, 1970), w = B.traffic.win;
+  const ST = new Float64Array(M * M), SR = new Float64Array(M * M);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x; let t = 0, r = 0;
+    if (G.r[i] && c.net[i]) r = G.r[i] === 3 ? 3 : G.r[i] === 2 ? 2 : 1;
+    if (G.z[i] === Z_RES) t = G.pop[i] * car * (1 - (c.metro[i] ? 0.7 : c.transit[i] ? 0.4 : 0));
+    else if (G.z[i] === Z_COM && G.pg[i] >= 1) t = B.comJobs[G.lv[i]] * 0.5 * car * (1 - (c.transit[i] ? 0.25 : 0));
+    const k = (y + 1) * M + x + 1;
+    ST[k] = t + ST[k - 1] + ST[k - M] - ST[k - M - 1]; SR[k] = r + SR[k - 1] + SR[k - M] - SR[k - M - 1];
+  }
+  const box = (S, x, y) => { const x0 = Math.max(0, x - w), y0 = Math.max(0, y - w), x1 = Math.min(N, x + w + 1), y1 = Math.min(N, y + w + 1); return S[y1 * M + x1] - S[y0 * M + x1] - S[y1 * M + x0] + S[y0 * M + x0]; };
+  const jam = new Float32Array(n); let pen = 0, P = 0, roads = 0, jammed = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x, isRoad = G.r[i] && c.net[i]; if (!isRoad && G.z[i] !== Z_RES) continue;
+    const g = box(ST, x, y) / (Math.max(1, box(SR, x, y)) * B.traffic.cap);
+    if (isRoad) { jam[i] = g; roads++; if (g > 1) jammed++; }
+    if (G.z[i] === Z_RES && G.pop[i]) { P += G.pop[i]; pen += G.pop[i] * clamp((g - 0.8) / 1.2, 0, 1); }
+  }
+  c.jam = jam;
+  return { pen: P ? Math.round(pen / P * 1000) / 1000 : 0, jammed: roads ? Math.round(jammed / roads * 1000) / 1000 : 0 };
 }
 
 function govTiles(G) { if (!G.gov) return []; const { x, y } = G.gov; return [idx(G, x, y), idx(G, x + 1, y), idx(G, x, y + 1), idx(G, x + 1, y + 1)]; }
@@ -598,6 +668,7 @@ function totals(G) {
     else if (z === Z_FARM) { const j = B.farmJobs[Math.max(0, done)]; farmJobs += j; farmFood += j * B.foodPerFarmer * soil * (c.mill[i] ? 1 + B.millBoost : 1); }
     else if (z === Z_COM) comJobs += B.comJobs[Math.max(0, done)];
   }
+  comJobs += ((c.act || {}).avm || 0) * SVD.avm.com;
   const govJobs = G.gov ? B.govJobs : 0, svcJobs = c.svcJobs;
   regroup(G, comJobs, govJobs + c.eduJobs);
   // Her grubun geçim kaynağı: çiftçi tarla, işçi üretim ve hizmet, esnaf dükkân, eğitimli kamu görevi, varlıklı uygun konut
@@ -615,7 +686,7 @@ function totals(G) {
   // Elektrik ve çöp (1890 sonrası): şehir geneli kapasite ve tüketim
   const yr = yearOf(G), A = c.act || {};
   const pcap = yr < 1890 ? 0 : (A.power || 0) * B.power.plant * (G.flags.noCoal ? 0.3 : 1) + (A.hydro || 0) * B.power.hydro + (A.lmPower ? B.power.landmark : 0) + (A.lmDam ? 2500 : 0) + (A.gas || 0) * 2000 + (A.nuclear || 0) * 6000 + (A.solar || 0) * 1500 + (A.wind || 0) * 450 + (A.fusion || 0) * 25000 + (A.lmRenew ? 8000 : 0);
-  const puse = yr < 1890 ? 0 : Math.round(P * (ramp(yr, 1890, 1915) + 0.6 * ramp(yr, 1930, 1965) + 0.5 * ramp(yr, 1970, 2005) - 0.3 * ramp(yr, 2020, 2060)) + (A.vfarm || 0) * 80 + (A.tech || 0) * 300 + (A.metro || 0) * 60 + (A.factory || 0) * B.power.factoryUse + (A.tram || 0) * B.power.tramUse);
+  const puse = yr < 1890 ? 0 : Math.round(P * (ramp(yr, 1890, 1915) + 0.6 * ramp(yr, 1930, 1965) + 0.5 * ramp(yr, 1970, 2005) - 0.3 * ramp(yr, 2020, 2060)) + (A.vfarm || 0) * 80 + (A.tech || 0) * 300 + (A.metro || 0) * 60 + (A.avm || 0) * 200 + (A.sanayi || 0) * 150 + (A.lojistik || 0) * 120 + (A.sinema || 0) * 20 + (A.factory || 0) * B.power.factoryUse + (A.tram || 0) * B.power.tramUse);
   const power = puse ? Math.min(1, pcap / puse) : (pcap ? 1 : 0);
   const waste = P ? Math.min(1, ((A.dump || 0) * B.dumpCap + (A.recycle || 0) * 7000) / P) : 1;
   const dFarm = Math.ceil(((P + want) * B.foodPerPerson + army - fish + reg * 0.6 * B.foodPerFarmer) / yieldPP) - farmJobs;
@@ -645,6 +716,9 @@ function quote(G, tool, cells) {
   const res = { ok: [], bad: [], cost: 0, err: null };
   const d = SVD[tool];
   if (d && d.year && yearOf(G) < d.year) { res.err = `${d.name} ${d.year} yılında açılır`; res.bad = cells.slice(0, 1); return res; }
+  if (d && d.unique && (cache(G).cnt[tool] || 0) > 0) { res.err = `Şehirde zaten bir ${d.name.toLocaleLowerCase('tr')} var`; res.bad = cells.slice(0, 1); return res; }
+  if (d && d.res) for (const k in d.res) if ((G.res[k] || 0) < d.res[k]) { res.err = `${d.name} için ambarda ${d.res[k]} ${RES_NAME[k].toLocaleLowerCase('tr')} gerekir`; res.bad = cells.slice(0, 1); return res; }
+  if (d && d.unique) cells = cells.slice(0, 1);
   if (tool === 'gov' || (d && (d.w > 1 || d.h > 1))) {
     if (tool === 'gov' && G.gov) { res.err = 'Valilik zaten kurulu'; return res; }
     if (tool !== 'gov' && !G.gov) { res.err = 'Önce Valilik binasını kur'; res.bad = cells.slice(0, 1); return res; }
@@ -661,7 +735,7 @@ function quote(G, tool, cells) {
     if (d && d.minP && P < d.minP) { res.err = `${d.name} için en az ${d.minP} nüfus gerekir`; res.bad = res.ok.concat(res.bad); res.ok = []; }
     else if (d && d.needRail && !G.fx.rail) { res.err = 'Demiryolu görevi bitince açılır'; res.bad = res.ok.concat(res.bad); res.ok = []; }
     else if (d && d.needRail && !res.bad.length && !edge.some(k => G.rl[k])) { res.err = `${d.name} bir rayın yanına kurulur`; res.bad = res.ok; res.ok = []; }
-    else if (d && d.needWater && !res.bad.length && edge.filter(k => G.t[k] === T_WATER).length < 2) { res.err = 'Liman su kıyısına kurulur'; res.bad = res.ok; res.ok = []; }
+    else if (d && d.needWater && !res.bad.length && edge.filter(k => G.t[k] === T_WATER).length < 2) { res.err = d.name + ' su kıyısına kurulur'; res.bad = res.ok; res.ok = []; }
     else if (d && d.needFarm && !res.bad.length && !edge.some(k => G.z[k] === Z_FARM)) { res.err = d.name + ' bir tarlanın yanına kurulur'; res.bad = res.ok; res.ok = []; }
     else if (res.bad.length) res.err = (tool === 'gov' ? 'Valilik' : d.name) + ` için ${w}×${h} boş arazi gerekir`;
     else res.cost = tool === 'gov' ? 0 : d.cost;
@@ -767,6 +841,7 @@ function apply(G, tool, cells) {
   if (!q.ok.length || (whole && q.bad.length)) return { done: false, err: q.err || 'Buraya yapılamaz' };
   if (q.cost > G.money) return { done: false, err: 'Hazinede yeterli para yok' };
   G.money -= q.cost;
+  if (d && d.res) for (const k in d.res) G.res[k] -= d.res[k];
   if (tool === 'buy') {
     const a = areaAt(G, cells[0]); a.own = 1; markOwn(G, a); G.bought = (G.bought || 0) + 1; G.tv = (G.tv || 0) + 1; touch(G);
     msg(G, 'land', 'Yeni arazi satın alındı.'); return { done: true, cost: q.cost, n: q.ok.length };
@@ -962,7 +1037,8 @@ function monthEnd(G) {
   const frac = fu ? clamp(Math.min((G.res.komur - rsv('komur')) / needC, (G.res.demir - rsv('demir')) / needI), 0, 1) : 0;
   G.res.komur -= needC * frac; G.res.demir -= needI * frac;
   const techInc = (A.tech || 0) * 500 * (0.4 + 0.6 * T.power);
-  const facInc = techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
+  const workInc = ((A.atolye || 0) * SVD.atolye.inc + ((A.sanayi || 0) * SVD.sanayi.inc + (A.lojistik || 0) * SVD.lojistik.inc) * (0.4 + 0.6 * T.power)) * staff;
+  const facInc = workInc + techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
   G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: frac, fac: fu };
   for (const k of RES) {
     if (G.res[k] > B.stockCap) {
@@ -984,8 +1060,8 @@ function monthEnd(G) {
     taxCom: emp.e * B.comProfit * fill * r,
     trade: c.outside && net > 0 ? net * B.exportPrice * (c.cnt.port ? B.port.food * (G.map === 'sea' ? 1.2 : 1) : 1) : 0,
     sales,
-    tourism: (c.tourism ? 40 + G.reg * 0.15 : 0) + (c.air ? 150 + G.reg * 0.35 : 0) + (c.expo ? 300 + G.reg * 0.4 : 0),      // anıtlar ve havalimanı
-    tickets: hippoIncome(G, c, P) * (race ? B.hippo.raceMul : 1) + (c.stadium ? 60 + Math.sqrt(P) * 2.5 : 0),
+    tourism: (c.tourism ? 40 + G.reg * 0.15 : 0) + (c.air ? 150 + G.reg * 0.35 : 0) + (c.expo ? 300 + G.reg * 0.4 : 0) + (A.han || 0) * 12 + ['gozcu', 'kizkule', 'saray', 'tapinak'].reduce((a, k) => a + (A[k] ? SVD[k].tour[0] + G.reg * SVD[k].tour[1] : 0), 0),      // anıtlar ve havalimanı
+    tickets: hippoIncome(G, c, P) * (race ? B.hippo.raceMul : 1) + (c.stadium ? 60 + Math.sqrt(P) * 2.5 : 0) + (A.saha || 0) * (20 + Math.sqrt(P) * 0.8),
     factory: facInc,
   };
   const svcUp = (Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0) + c.upExtra) * (G.fx.smart ? 0.75 : 1);
@@ -1001,11 +1077,12 @@ function monthEnd(G) {
   const netMoney = sum(inc) - sum(exp);
   if (G.gov) G.money += netMoney;
   // Bölge talebi: memnun, itibarlı ve bağlantılı şehir çevresinde ün kazanır
-  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0) + (G.fx.osb ? 3 : 0) + (c.hsr ? 6 : 0));
+  if (c.outside) G.reg = Math.max(0, G.reg + B.regGrowth * clamp((avgHap(G) - 35) / 30, -1, 1.5) * (0.75 + G.itibar / 200) * (G.fx.rail ? 1.4 : 1) + (c.railOut ? 1.5 : 0) + (c.cnt.port ? B.port.reg : 0) + Math.min(3, c.cnt.pstation || 0) * 0.5 + (A.factory || 0) * 0.8 + (c.motorOut ? 4 : 0) + (c.air ? 3 : 0) + (G.fx.osb ? 3 : 0) + (c.hsr ? 6 : 0) + Math.min(3, A.han || 0) + (A.avm ? 2 : 0) + (A.lojistik ? (c.motorOut ? 3 : 1) : 0));
   G.reg = Math.min(G.reg, 150 + P * 0.5);      // bölge talebi şehrin büyüklüğüyle sınırlı
   G.last = { inc, exp, net: netMoney };
   if (G.loan) { const L = G.loan; L.bal = L.bal * (1 + L.rate / 12) - exp.loan; L.left--; if (L.left <= 0 || L.bal < 1) { G.loan = null; msg(G, 'loan', 'Banka kredisi bitti, son taksit ödendi.'); } }
   // Memnuniyet: ihtiyaçlar şehir büyüdükçe belirir
+  G.tr = traffic(G, c);
   if (P > 0) {
     const deficit = net < 0 ? -net / Math.max(1, cons) : 0;
     const cv = T.cov, earlyW = Math.min(1, P / 120);
@@ -1027,6 +1104,7 @@ function monthEnd(G) {
         dirt: -Math.round(cv.dirt * 10 * w('dirt')),
         fun: Math.round(cv.fun * 6 * w('fun')) + (G.raceUntil > G.day ? B.hippo.raceHap : 0),
         transit: Math.round(cv.transit * 5 * w('transit')),
+        traffic: -Math.round(G.tr.pen * 14 * w('traffic') * ramp(P, 400, 1500)),
         power: T.yr >= 1890 ? Math.round((T.power * 6 - (1 - T.power) * 10 * ramp(T.yr, 1895, 1910)) * w('power')) : 0,
         waste: -Math.round((1 - T.waste) * 10 * ramp(T.yr, 1900, 1912)),
         army: c.cnt.barracks ? 3 : 0,
@@ -1227,7 +1305,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
