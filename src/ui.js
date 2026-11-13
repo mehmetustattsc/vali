@@ -82,6 +82,7 @@ const ICON = {
   kizkule: '<path d="M10 17V8h4v9M9 8h6l-3-4zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20M8 17h8"/>',
   saray: '<path d="M2 21h20M4 21V11h16v10M12 11V7M9 7a3 3 0 0 1 6 0M7 14v4M11 14v4M15 14v4M19 14v4M4 11l2-3M20 11l-2-3"/>',
   tapinak: '<path d="M3 21h18M4 9h16L12 3zM6 9v9M10 9v9M14 9v9M18 9v9M4 18h16"/>',
+  rotate: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
   scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
 };
 const ico = (k, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
@@ -249,6 +250,8 @@ function buildChrome() {
   $('#panel .x').onclick = closePanel;
   $('#plan .no').innerHTML = ico('close'); $('#plan .yes').innerHTML = ico('check');
   $('#plan .no').onclick = clearPlan; $('#plan .yes').onclick = confirmPlan;
+  $('#plan .rot').innerHTML = ico('rotate');
+  $('#plan .rot').onclick = () => { G.prot = G.prot ? 0 : 1; if (plan) setPlan(plan.a, plan.b); };
 }
 
 function setTool(t) {
@@ -727,6 +730,7 @@ function setPlan(a, b) {
   const ok = q.ok.length && !(tool === 'gov' && q.bad.length) && q.cost <= G.money;
   $('#plan .cost').innerHTML = quoteText(q);
   $('#plan .yes').disabled = !ok;
+  const d = VL.SVD[tool]; $('#plan .rot').hidden = !(d && (d.w || 1) !== (d.h || 1));
   $('#plan').hidden = false;
   hintOverride = null; showHint();
   placePlanBar();

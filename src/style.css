@@ -189,3 +189,5 @@ button.wide.on{background:var(--accent);color:#2a2214}
 #money{min-width:128px}#popb{min-width:78px}#hapb{min-width:62px}#projb{min-width:62px;justify-content:center}
 .stat{white-space:nowrap;flex:0 0 auto}
 @media (max-width:900px) and (orientation:landscape){ #date{width:104px;font-size:13px;padding:7px 6px} #speeds button{min-width:30px} .stat{padding:6px 7px;gap:4px} #money{min-width:112px} #popb{min-width:68px} #hapb{min-width:54px} #projb{min-width:54px} }
+
+#plan .rot{width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:grid;place-items:center}#plan .rot svg{width:20px;height:20px}

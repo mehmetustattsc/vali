@@ -123,6 +123,8 @@ const SVD = {
   site: { code: S_SITE, name: 'Şantiye', cost: 0, w: 2, h: 2 },
 };
 const dims = (d) => [d.w || 1, d.h || 1];
+// Kare olmayan binalar döndürülebilir: G.prot = 1 iken en ve boy yer değiştirir
+const dimsR = (G, d) => { const [w, h] = dims(d); return G.prot && w !== h ? [h, w] : [w, h]; };
 /* Üretim tesislerinin seviyeleri: çıktı, iş ve yükseltme maliyeti (ilk kurulum maliyetinin katı) */
 const UP = { out: [0, 1, 1.75, 2.5], jobs: [0, 1, 1.4, 1.8], cost: [0, 0, 1.5, 2.5], max: 3 };
 /* Nüfus grupları ve duyarlılıkları (1 = ortalama) */
@@ -723,7 +725,7 @@ function quote(G, tool, cells) {
     if (tool === 'gov' && G.gov) { res.err = 'Valilik zaten kurulu'; return res; }
     if (tool !== 'gov' && !G.gov) { res.err = 'Önce Valilik binasını kur'; res.bad = cells.slice(0, 1); return res; }
     if (tool === 'site' && !(G.proj && !G.proj.site)) { res.err = G.proj ? 'Şantiye zaten kurulu' : 'Şu an görev yok'; res.bad = cells.slice(0, 1); return res; }
-    const [w, h] = tool === 'gov' ? [2, 2] : dims(d);
+    const [w, h] = tool === 'gov' ? [2, 2] : dimsR(G, d);
     const i = cells[0], x = i % G.N, y = (i / G.N) | 0;
     for (let b = y; b < y + h; b++) for (let a = x; a < x + w; a++) {
       const j = inMap(G, a, b) ? idx(G, a, b) : -1;
@@ -851,7 +853,8 @@ function apply(G, tool, cells) {
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = S_GOV; }
     msg(G, 'gov', 'Valilik kuruldu. Şimdi batıdaki dış yola bir yol bağla.');
   } else if (whole) {
-    const i = cells[0], [w, h] = dims(d), m = { k: d.code, x: i % G.N, y: (i / G.N) | 0, w, h };
+    const i = cells[0], [w, h] = dimsR(G, d), m = { k: d.code, x: i % G.N, y: (i / G.N) | 0, w, h };
+    if (w !== dims(d)[0]) m.r = 1;
     if (tool === 'site') { m.pid = PROJECTS[G.proj.i].id; G.proj.site = 1; msg(G, 'site', 'Şantiye kuruldu. Kaynaklar yol ağıyla her ay buraya taşınır.'); }
     G.multi.push(m);
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = d.code; }
