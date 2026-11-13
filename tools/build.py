@@ -14,7 +14,7 @@ head = ('<!doctype html>\n<html lang="tr">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="description" content="Telefonda yatay ekranda oynanan, 1850\'den başlayan şehir kurma oyunu.">\n'
         '<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icons/icon-192.png">\n<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">\n')
 i = t.index('<div id="app">')
-web = head + t[:i] + '\n<script>if("serviceWorker" in navigator&&location.protocol==="https:")addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});</script>\n</head>\n<body>\n' + t[i:] + '\n</body>\n</html>\n'
+web = head + t[:i] + '\n<script>' + rd('src/boot.js') + '</script>\n</head>\n<body>\n' + t[i:] + '\n</body>\n</html>\n'
 W = os.path.join(R, 'web')
 os.makedirs(os.path.join(W, 'vendor'), exist_ok=True)
 open(os.path.join(W, 'index.html'), 'w', encoding='utf-8').write(web)

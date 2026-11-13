@@ -7,6 +7,6 @@ self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // Önce ağ (güncel sürüm), yoksa önbellek
-  e.respondWith(fetch(e.request).then(n => { const cp = n.clone(); caches.open(VERSION).then(c => c.put(e.request, cp)); return n; })
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(n => { const cp = n.clone(); caches.open(VERSION).then(c => c.put(e.request, cp)); return n; })
     .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html'))));
 });
