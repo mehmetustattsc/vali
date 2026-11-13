@@ -191,3 +191,14 @@ button.wide.on{background:var(--accent);color:#2a2214}
 @media (max-width:900px) and (orientation:landscape){ #date{width:104px;font-size:13px;padding:7px 6px} #speeds button{min-width:30px} .stat{padding:6px 7px;gap:4px} #money{min-width:112px} #popb{min-width:68px} #hapb{min-width:54px} #projb{min-width:54px} }
 
 #plan .rot{width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.1);display:grid;place-items:center}#plan .rot svg{width:20px;height:20px}
+
+#money{min-width:0;width:152px;justify-content:flex-start}@media (max-width:900px) and (orientation:landscape){#money{width:136px}}
+/* Telefonda (çentik payı düşülünce ~750 px): üst çubuk sığsın */
+@media (max-width:900px) and (orientation:landscape){
+  #hud{gap:5px} .hud-c{gap:4px}
+  #date{width:92px;font-size:12.5px;padding:7px 4px}
+  #speeds button{min-width:28px}
+  #money{width:124px} #money small{font-size:10px}
+  #popb{min-width:62px} #hapb{min-width:50px} #projb{min-width:50px}
+  .stat{padding:6px 6px;gap:3px;font-size:13.5px}
+}

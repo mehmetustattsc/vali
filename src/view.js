@@ -381,7 +381,7 @@ export function createView(canvas, G0) {
   }
 
   function buildBuildings() {
-    for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr']) P[k].count = 0;
+    for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr', 'blob']) P[k].count = 0;
     for (let i = 0; i < N * N; i++) {
       const z = G.z[i], lv = G.lv[i], sv = G.sv[i];
       if (sv === V.S_FOUNTAIN) {
@@ -464,7 +464,7 @@ export function createView(canvas, G0) {
       }
     }
     for (const m of G.multi || []) drawMulti(m);
-    for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr']) flush(P[k]);
+    for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr', 'blob']) flush(P[k]);
   }
 
   /* Hizmet ve üretim binaları (1×1) */
@@ -1023,8 +1023,13 @@ export function createView(canvas, G0) {
     }
     return false;
   }
+  let trainSig = '';
   function syncTrain() {
-    const c = V.cache(G); trains = [];
+    const c = V.cache(G);
+    let nr = 0; for (let i = 0; i < N * N; i++) if (G.rl[i]) nr += i;
+    const sig = G.multi.filter(m => m.k === V.S_LANDMARK || m.k === V.S_PSTATION || m.k === V.S_FSTATION).map(m => m.k + ':' + m.x + ',' + m.y).join('|') + '#' + nr + (c.railOut ? 'o' : '');
+    if (sig === trainSig && trains.length) return;         // aynı hat ve istasyonlar: trenler yoluna devam eder
+    trainSig = sig; trains = [];
     const ms = G.multi.filter(m => (m.k === V.S_LANDMARK && (m.pid === 'rail' || m.pid === 'hsr')) || m.k === V.S_PSTATION || m.k === V.S_FSTATION);
     railSt = ms.map(m => { const set = new Set(V.multiTiles(G, m)), rails = []; for (const t of set) for (const j of V.neigh4(G, t)) if (G.rl[j]) rails.push(j); return { m, set, rails, f: m.k === V.S_FSTATION, h: m.pid === 'hsr' }; }).filter(s => s.rails.length);
     const P_ = [], F_ = [];
@@ -1032,7 +1037,10 @@ export function createView(canvas, G0) {
     const yr = V.dateOf(G).year, main = c.railOut && G.railEntry;
     const add = (stops, kind, n) => { for (let q = 0; q < n && stops.length; q++) { const t = { stops, idx: q, at: main ? -1 : stops[q % stops.length], kind, out: main, wait: 2 + trains.length * 7, pts: null }; if (!main) t.idx = q + 1; if (nextLeg(t)) trains.push(t); } };
     if (main) {
-      add(P_, 'p', Math.min(2, P_.length)); add(F_, 'f', Math.min(3, Math.ceil(F_.length / 2)));
+      add(P_, 'p', Math.min(2, P_.length)); const np = trains.length;
+      add(F_, 'f', Math.min(3, Math.ceil(F_.length / 2)));
+      // Ana hatta bağlı olmayan istasyonlar için şehir içi tren
+      if (!np && P_.length > 1) { const t = { stops: P_, idx: 1, at: P_[0], kind: 'p', out: false, wait: 3, pts: null }; if (nextLeg(t)) trains.push(t); }
     } else {
       if (P_.length > 1) add(P_, 'p', 1);
       if (F_.length > 1 || (F_.length && P_.length)) add(F_.concat(P_.slice(0, 1)), 'f', 1);
@@ -1042,7 +1050,7 @@ export function createView(canvas, G0) {
   }
   const eraOf = (t, yr) => t.kind === 'h' && yr >= 2000 ? 3 : yr < 1950 ? 0 : yr < 1990 ? 1 : 2;
   function at(t, s) { const k = Math.max(0, Math.min(t.len - 1e-6, s)), i = Math.floor(k), f = k - i, a = t.pts[i], b = t.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[0] - a[0], b[1] - a[1]), a[2] + (b[2] - a[2]) * f]; }
-  const LOCO = ['#2b2b2b', '#b8452e', '#2f5d8a', '#f2f4f6'], PCAR = ['#7a3b2e', '#3e6b4a', '#c9c2b4', '#f2f4f6'], FCAR = ['#6b4a32', '#5a5a5a', '#8a3a2a', '#3e5b7a', '#6b6b3a'];
+  const LOCO = ['#2b2b2b', '#b8452e', '#2f5d8a', '#f2f4f6'], PCAR = ['#2f6b45', '#3e6b4a', '#c9c2b4', '#f2f4f6'], FCAR = ['#6b4a32', '#5a5a5a', '#8a3a2a', '#3e5b7a', '#6b6b3a'];
   let smokeT = 0;
   function stepTrain(dt) {
     if (!trains.length) return;
@@ -1075,11 +1083,13 @@ export function createView(canvas, G0) {
             if (t.wait <= 0) for (let q = 0; q < 3; q++) { const u = ((smokeT * 0.9 + q / 3) % 1); put(P.train, fx - Math.sin(rot) * u * 0.5 * t.dir, yb + 0.44 + u * 0.5, fz - Math.cos(rot) * u * 0.5 * t.dir, 0.08 + u * 0.16, 0.08 + u * 0.12, 0.08 + u * 0.16, 0, u < 0.5 ? '#d8d6d0' : '#eceae4'); }
           }
         } else if (t.kind === 'f') {
-          const col = FCAR[(k + (t.pts.length % 3)) % FCAR.length];
-          put(P.train, x, yb, z, 0.27, k % 2 ? 0.2 : 0.26, 0.52, rot, col);
+          const col = FCAR[(k + (t.pts.length % 3)) % FCAR.length], open = k % 2 === 1;
+          put(P.train, x, yb, z, 0.27, open ? 0.14 : 0.24, 0.52, rot, open ? '#4a3a2e' : col);
+          if (open) put(P.train, x, yb + 0.14, z, 0.22, 0.08, 0.44, rot, ['#2a2a2a', '#9a8f7c', '#8a5a3a'][k % 3]);     // kömür, taş, kereste
         } else {
-          put(P.train, x, yb, z, 0.28, t.era === 3 ? 0.28 : 0.25, 0.54, rot, PCAR[t.era]);
-          put(P.train, x, yb + 0.12, z, 0.29, 0.06, 0.48, rot, t.era >= 2 ? '#2b3a48' : '#e8dcc2');
+          put(P.train, x, yb, z, 0.29, t.era === 3 ? 0.3 : 0.3, 0.56, rot, PCAR[t.era]);
+          put(P.train, x, yb + 0.14, z, 0.3, 0.08, 0.5, rot, t.era >= 2 ? '#1f2d3a' : '#f2d27a');             // pencere şeridi
+          put(P.train, x, yb + 0.3, z, 0.24, 0.03, 0.54, rot, t.era >= 2 ? '#8d959c' : '#3a3532');           // çatı
         }
       }
     }

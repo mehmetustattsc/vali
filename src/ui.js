@@ -4,6 +4,9 @@ const VL = self.Vali;
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => Math.round(n).toLocaleString('tr-TR');
 const sgn = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
+// Üst çubuk için kısa sayı: 152.300 → 152 B, 1.001.662 → 1,00 Mn (genişlik sabit kalsın)
+const short = (n) => { const a = Math.abs(n), s = n < 0 ? '−' : ''; return a >= 1e6 ? s + (a / 1e6).toLocaleString('tr-TR', { minimumFractionDigits: a < 1e7 ? 2 : 1, maximumFractionDigits: a < 1e7 ? 2 : 1 }) + ' Mn' : a >= 1e5 ? s + Math.round(a / 1e3) + ' B' : s + fmt(a); };
+const sgnS = (n) => (n >= 0 ? '+' : '−') + (Math.abs(n) >= 1e4 ? (Math.abs(n) / 1e3).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' B' : fmt(Math.abs(n)));
 const SAVE_KEY = 'vali.save.v1';
 
 const ICON = {
@@ -307,9 +310,9 @@ function updateHud(force) {
   if (G.proj) { const p = VL.PROJECTS[G.proj.i]; let a = 0, b = 0; for (const k in p.needs) { a += G.proj.got[k]; b += p.needs[k]; } pj.querySelector('b').textContent = '%' + Math.floor(a / b * 100); pj.classList.toggle('alert', !G.proj.site || !!G.proj.late); }
   else { pj.querySelector('b').textContent = G.done.length + '✓'; pj.classList.remove('alert'); }
   $('#tools .t-gov').hidden = !!G.gov;
-  $('#money b').textContent = fmt(G.money);
+  $('#money b').textContent = short(G.money);
   const net = G.last.net || 0;
-  const sm = $('#money small'); sm.textContent = G.gov ? sgn(net) + '/ay' : ''; sm.className = net < 0 ? 'neg' : 'pos';
+  const sm = $('#money small'); sm.textContent = G.gov ? sgnS(net) + '/ay' : ''; sm.className = net < 0 ? 'neg' : 'pos';
   $('#money').classList.toggle('debt', G.money < 0);
   $('#popb b').textContent = fmt(T.P);
   const h = Math.round(VL.avgHap(G)); $('#hapb b').textContent = T.P ? '%' + h : '—';
