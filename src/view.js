@@ -68,7 +68,7 @@ export function createView(canvas, G0) {
   const P = {
     tCone: pool(geo.cone, 9000), tBlob: pool(geo.blob, 4000), tTrunk: pool(geo.box, 13000),
     box: pool(geo.box, 16000), roof: pool(geo.roof, 10000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200), blob: pool(geo.blob, 800),
-    agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true), bridge: pool(geo.box, 3000, true), boat: pool(geo.box, 40, true),
+    agent: pool(geo.box, 300, false), train: pool(geo.box, 160, true), bridge: pool(geo.box, 3000, true), boat: pool(geo.box, 40, true),
   };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();
   const UP = new THREE.Vector3(0, 1, 0);
@@ -996,40 +996,77 @@ export function createView(canvas, G0) {
 
   /* ---------- güncelleme ---------- */
   let lastMonth = -1;
-  /* Tren: istasyon ana hatta bağlıysa aralıklarla batıdan gelir, istasyonda bekler, geri döner */
-  let train = null;
+  /* Trenler: ana hattan her istasyona gelen seferler ve şehir içinde istasyondan istasyona giden trenler.
+     Görünüş döneme göre değişir: buharlı (dumanlı) → dizel → elektrikli → hızlı tren. */
+  let trains = [];
   function syncTrain() {
-    const c = V.cache(G);
-    if (!c.railOut || !G.railEntry) { train = null; P.train.count = 0; flush(P.train); return; }
-    const st = G.multi.find(m => m.k === V.S_LANDMARK && m.pid === 'rail') || G.multi.find(m => m.k === V.S_PSTATION) || G.multi.find(m => m.k === V.S_FSTATION);
-    if (!st) { train = null; return; }
-    const stTiles = new Set(V.multiTiles(G, st));
-    const start = G.railEntry.y * N + G.railEntry.x, prev = new Map([[start, -1]]), q = [start];
-    let end = -1;
-    while (q.length) { const i = q.shift(); if (V.neigh4(G, i).some(j => stTiles.has(j))) { end = i; break; } for (const j of V.neigh4(G, i)) if (G.rl[j] && !prev.has(j)) { prev.set(j, i); q.push(j); } }
-    if (end < 0) { train = null; return; }
-    const path = []; for (let k = end; k !== -1; k = prev.get(k)) path.unshift(k);
-    const pts = [];
-    for (let k = 6; k >= 1; k--) pts.push([W(-k), W(G.railEntry.y), 0.05]);     // haritanın dışından gelir
-    for (const i of path) pts.push([W(i % N), W((i / N) | 0), G.t[i] === V.T_WATER ? DECK + 0.03 : 0.05]);
-    train = { pts, s: 0, dir: 1, wait: 3, len: pts.length - 1 };
+    const c = V.cache(G); trains = [];
+    const stations = G.multi.filter(m => (m.k === V.S_LANDMARK && (m.pid === 'rail' || m.pid === 'hsr')) || m.k === V.S_PSTATION || m.k === V.S_FSTATION);
+    const sets = stations.map(m => new Set(V.multiTiles(G, m)));
+    const touches = (i, set) => V.neigh4(G, i).some(j => set.has(j));
+    // Raylar üzerinde en kısa yol (başlangıç karelerinden hedef istasyona komşu kareye)
+    const route = (starts, target) => {
+      const prev = new Map(), q = []; for (const s0 of starts) if (G.rl[s0] && !prev.has(s0)) { prev.set(s0, -1); q.push(s0); }
+      for (let h = 0; h < q.length; h++) { const i = q[h]; if (touches(i, target)) { const path = []; for (let k = i; k !== -1; k = prev.get(k)) path.unshift(k); return path; } for (const j of V.neigh4(G, i)) if (G.rl[j] && !prev.has(j)) { prev.set(j, i); q.push(j); } }
+      return null;
+    };
+    const ptsOf = (path) => path.map(i => [W(i % N), W((i / N) | 0), G.t[i] === V.T_WATER ? DECK + 0.03 : 0.05]);
+    const yr = V.dateOf(G).year, kindOf = (m) => m.k === V.S_FSTATION ? 'f' : (m.pid === 'hsr' ? 'h' : 'p');
+    // Ana hat seferleri
+    if (c.railOut && G.railEntry) {
+      const start = G.railEntry.y * N + G.railEntry.x;
+      stations.forEach((m, k) => {
+        if (trains.length >= 3) return;
+        const path = route([start], sets[k]); if (!path) return;
+        const pts = []; for (let e = 8; e >= 1; e--) pts.push([W(-e), W(G.railEntry.y), 0.05]);
+        pts.push(...ptsOf(path));
+        trains.push({ pts, s: 0, dir: 1, wait: 2 + trains.length * 9, len: pts.length - 1, kind: kindOf(m), out: 1 });
+      });
+    }
+    // Şehir içi: istasyondan istasyona
+    for (let a = 0; a < stations.length && trains.length < 5; a++) for (let b = a + 1; b < stations.length && trains.length < 5; b++) {
+      const starts = []; for (const t of sets[a]) for (const j of V.neigh4(G, t)) if (G.rl[j]) starts.push(j);
+      const path = route(starts, sets[b]); if (!path || path.length < 4) continue;
+      trains.push({ pts: ptsOf(path), s: 0, dir: 1, wait: 4 + a * 3, len: path.length - 1, kind: kindOf(stations[a]) === 'f' || kindOf(stations[b]) === 'f' ? 'f' : 'p', out: 0 });
+    }
+    for (const t of trains) t.era = t.kind === 'h' && yr >= 2000 ? 3 : yr < 1950 ? 0 : yr < 1990 ? 1 : 2;
+    if (!trains.length) { P.train.count = 0; flush(P.train); }
   }
   function at(t, s) { const k = Math.max(0, Math.min(t.len - 1e-6, s)), i = Math.floor(k), f = k - i, a = t.pts[i], b = t.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[0] - a[0], b[1] - a[1]), a[2] + (b[2] - a[2]) * f]; }
+  const LOCO = ['#2b2b2b', '#b8452e', '#2f5d8a', '#f2f4f6'], PCAR = ['#7a3b2e', '#3e6b4a', '#c9c2b4', '#f2f4f6'], FCAR = ['#6b4a32', '#5a5a5a', '#8a3a2a', '#3e5b7a', '#6b6b3a'];
+  let smokeT = 0;
   function stepTrain(dt) {
-    if (!train) return;
-    const t = train;
-    if (t.wait > 0) t.wait -= dt;
-    else {
-      t.s += dt * 1.6 * t.dir;
-      if (t.dir > 0 && t.s >= t.len) { t.s = t.len; t.dir = -1; t.wait = 5; }          // istasyonda bekler
-      else if (t.dir < 0 && t.s <= 0) { t.s = 0; t.dir = 1; t.wait = 14; }             // hat dışında, sonraki sefer
-    }
-    P.train.count = 0;
-    const cols = ['#2b2b2b', '#7a3b2e', '#3e5b7a', '#6b6b3a'];
-    for (let k = 0; k < 4; k++) {
-      const [x, z, rot, yb] = at(t, t.s - k * 0.62 * t.dir);
-      if (k === 0) { put(P.train, x, yb, z, 0.3, 0.26, 0.5, rot, cols[0]); put(P.train, x + Math.sin(rot) * 0.15 * t.dir, yb + 0.26, z + Math.cos(rot) * 0.15 * t.dir, 0.07, 0.14, 0.07, rot, '#1e1e1e'); }
-      else put(P.train, x, yb, z, 0.28, 0.24, 0.52, rot, cols[k]);
+    if (!trains.length) return;
+    smokeT += dt; P.train.count = 0;
+    for (const t of trains) {
+      const sp = [1.6, 2.2, 2.6, 4.2][t.era];
+      const cars = t.kind === 'h' ? 5 : t.kind === 'f' ? 6 : 4, gap = t.era === 3 ? 0.58 : 0.62;
+      const L = Math.min(t.len, (cars - 1) * gap), run = t.len - L;   // tren [s, s+L] aralığını kaplar
+      if (t.wait > 0) t.wait -= dt;
+      else {
+        t.s += dt * sp * t.dir;
+        if (t.dir > 0 && t.s >= run) { t.s = run; t.dir = -1; t.wait = 5; }               // istasyonda bekler
+        else if (t.dir < 0 && t.s <= 0) { t.s = 0; t.dir = 1; t.wait = t.out ? 14 : 6; }    // hat dışında ya da öbür istasyonda
+      }
+      const head = t.dir > 0 ? t.s + L : t.s;
+      for (let k = 0; k < cars; k++) {
+        const [x, z, rot, yb] = at(t, head - k * gap * t.dir);
+        if (k === 0) {
+          put(P.train, x, yb, z, 0.3, t.era === 0 ? 0.26 : 0.3, 0.52, rot, LOCO[t.era]);
+          if (t.era === 3) put(P.train, x + Math.sin(rot) * 0.2 * t.dir, yb + 0.02, z + Math.cos(rot) * 0.2 * t.dir, 0.31, 0.12, 0.2, rot, '#c0392b');
+          if (t.era === 0) {
+            const fx = x + Math.sin(rot) * 0.15 * t.dir, fz = z + Math.cos(rot) * 0.15 * t.dir;
+            put(P.train, fx, yb + 0.26, fz, 0.07, 0.14, 0.07, rot, '#1e1e1e');
+            if (t.wait <= 0) for (let q = 0; q < 3; q++) { const u = ((smokeT * 0.9 + q / 3) % 1); put(P.train, fx - Math.sin(rot) * u * 0.5 * t.dir, yb + 0.44 + u * 0.5, fz - Math.cos(rot) * u * 0.5 * t.dir, 0.08 + u * 0.16, 0.08 + u * 0.12, 0.08 + u * 0.16, 0, u < 0.5 ? '#d8d6d0' : '#eceae4'); }
+          }
+        } else if (t.kind === 'f') {
+          const col = FCAR[(k + (t.pts.length % 3)) % FCAR.length];
+          put(P.train, x, yb, z, 0.27, k % 2 ? 0.2 : 0.26, 0.52, rot, col);
+        } else {
+          put(P.train, x, yb, z, 0.28, t.era === 3 ? 0.28 : 0.25, 0.54, rot, PCAR[t.era]);
+          put(P.train, x, yb + 0.12, z, 0.29, 0.06, 0.48, rot, t.era >= 2 ? '#2b3a48' : '#e8dcc2');
+        }
+      }
     }
     flush(P.train);
   }
@@ -1067,7 +1104,7 @@ export function createView(canvas, G0) {
     if (G.tv !== lastTv) { lastTv = G.tv; buildTerrain(); buildTrees(); buildRoads(); syncTrain(); }
     buildBuildings();
     const m = V.dateOf(G).month;
-    buildFlats(); if (m !== lastMonth) { lastMonth = m; syncAgents(); }
+    buildFlats(); if (m !== lastMonth) { lastMonth = m; syncAgents(); const yr = V.dateOf(G).year; for (const t of trains) t.era = t.kind === 'h' && yr >= 2000 ? 3 : yr < 1950 ? 0 : yr < 1990 ? 1 : 2; }
     if (overlay) buildOverlay();
   }
   function syncBuild() {    // oyuncu bir şey inşa ettiğinde
@@ -1086,7 +1123,7 @@ export function createView(canvas, G0) {
 
   resize(); syncAll(); placeCamera();
   return { setGame, syncAll, syncDay, syncBuild, frame, resize, tileAt, screenOf, pan, zoomAt, rotate, focus, setPreview, setOverlay, select, cam, renderer,
-    get overlay() { return overlay; }, placeCamera };
+    get overlay() { return overlay; }, get trainCount() { return trains.length; }, placeCamera };
 }
 
 /* Üçgen prizma çatı: x -0.5..0.5, y 0..1 (sırt), z -0.5..0.5 */
