@@ -67,7 +67,7 @@ export function createView(canvas, G0) {
   // Statik (ağaçlar) ve dinamik (binalar) havuzlar ayrı: binalar her gün yenilenir, ağaçlar sadece değişince
   const P = {
     tCone: pool(geo.cone, 9000), tBlob: pool(geo.blob, 4000), tTrunk: pool(geo.box, 13000),
-    box: pool(geo.box, 16000), roof: pool(geo.roof, 10000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200),
+    box: pool(geo.box, 16000), roof: pool(geo.roof, 10000), cyl: pool(geo.cyl, 1500), cone: pool(geo.cone, 1500), pyr: pool(geo.pyr, 200), blob: pool(geo.blob, 800),
     agent: pool(geo.box, 300, false), train: pool(geo.box, 60, true), bridge: pool(geo.box, 3000, true), boat: pool(geo.box, 40, true),
   };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();

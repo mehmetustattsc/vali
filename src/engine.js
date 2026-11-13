@@ -1104,7 +1104,7 @@ function monthEnd(G) {
         dirt: -Math.round(cv.dirt * 10 * w('dirt')),
         fun: Math.round(cv.fun * 6 * w('fun')) + (G.raceUntil > G.day ? B.hippo.raceHap : 0),
         transit: Math.round(cv.transit * 5 * w('transit')),
-        traffic: -Math.round(G.tr.pen * 14 * w('traffic') * ramp(P, 400, 1500)),
+        traffic: -Math.round(((G.tr || {}).pen || 0) * 14 * w('traffic') * ramp(P, 400, 1500)),
         power: T.yr >= 1890 ? Math.round((T.power * 6 - (1 - T.power) * 10 * ramp(T.yr, 1895, 1910)) * w('power')) : 0,
         waste: -Math.round((1 - T.waste) * 10 * ramp(T.yr, 1900, 1912)),
         army: c.cnt.barracks ? 3 : 0,
