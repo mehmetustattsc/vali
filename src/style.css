@@ -204,3 +204,5 @@ button.wide.on{background:var(--accent);color:#2a2214}
 }
 
 .chk{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0}.chk input{width:20px;height:20px}
+
+.buy{margin:8px 0;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04)}.buy-h,.buy-f{display:flex;justify-content:space-between;gap:8px;font-size:13px}.buy-f{font-size:12px;opacity:.9}

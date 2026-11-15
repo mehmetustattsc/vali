@@ -86,6 +86,7 @@ const ICON = {
   saray: '<path d="M2 21h20M4 21V11h16v10M12 11V7M9 7a3 3 0 0 1 6 0M7 14v4M11 14v4M15 14v4M19 14v4M4 11l2-3M20 11l-2-3"/>',
   tapinak: '<path d="M3 21h18M4 9h16L12 3zM6 9v9M10 9v9M14 9v9M18 9v9M4 18h16"/>',
   rotate: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+  depo: '<path d="M3 21V9l9-5 9 5v12M7 21v-8h10v8M7 17h10"/>',
   marangoz: '<path d="M3 17 14 6l4 4L7 21H3zM14 6l2-2 4 4-2 2M5 15l4 4"/>',
   dokum: '<path d="M4 21h16M6 21V11h12v10M9 11V7h6v4M10 4h4M12 14v4"/>',
   scroll: '<path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7"/><path d="M6 4a2 2 0 0 0-2 2v1h4V6a2 2 0 0 0-2-2zM7 20a2 2 0 0 1-2-2V7M10 9h6M10 13h6"/>',
@@ -138,8 +139,9 @@ const TOOL_INFO = {
   fun: { name: 'Eğlence' },
   fayton: { name: 'Fayton durağı', tip: 'Atlı faytonlar. Aynı yol üzerinde 12 kare içinde ikinci bir fayton durağı olunca aradaki yol hat olur, hattın iki yanı ulaşıma kavuşur.' },
   atolye: { name: 'Dokuma atölyesi', tip: '24 işçiye iş, her ay küçük bir gelir. İlk dönemin fabrikası.' },
-  marangoz: { name: 'Marangozhane', tip: '20 işçiye iş, ayda 6 kereste işler, gelir getirir. Kereste yoksa dışarıdan alınır.' },
-  dokum: { name: 'Dökümhane', tip: '32 işçiye iş, ayda 4 kömür ve 3 demir işler, gelir getirir. Eksik hammadde dışarıdan alınır; çevresini kirletir.' },
+  depo: { name: 'Depo', tip: 'Ambar sınırını her kaynaktan 1000 birim artırır (yükseltmeyle daha çok). Fazla üretim satılmadan saklanır, görevler için stok birikir.' },
+  marangoz: { name: 'Marangozhane', tip: '20 işçiye iş, ayda 6 kereste işler, gelir getirir. Kereste yetmezse bütçeden satın alabilirsin.' },
+  dokum: { name: 'Dökümhane', tip: '32 işçiye iş, ayda 4 kömür ve 3 demir işler, gelir getirir; çevresini kirletir. Hammadde yetmezse bütçeden satın alabilirsin.' },
   han: { name: 'Han', tip: '2×2 kervansaray: tüccarları çeker, bölge talebi ve dolayısıyla ticaret talebi artar; az da olsa ziyaretçi geliri. 150 nüfustan sonra.' },
   tiyatro: { name: 'Tiyatro', tip: 'Çevresinde eğlence. 400 nüfustan sonra.' },
   saha: { name: 'Futbol sahası', tip: '3×2: geniş bir alanda eğlence, maç günleri bilet geliri. 800 nüfustan sonra.' },
@@ -160,7 +162,7 @@ const TOOL_INFO = {
   bulldoze: { name: 'Yık', tip: 'Yolu, alanı ya da binayı kaldırır.' },
   svc: { name: 'Hizmet' }, ind: { name: 'Üretim' }, way: { name: 'Ulaşım' },
 };
-const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'police', 'fire', 'school', 'clinic', 'barracks', 'fayton', 'tram', 'bus', 'metro', 'dump', 'lyceum', 'hospital', 'recycle'], fun: ['smallsq', 'square', 'bigsq', 'hippo', 'tiyatro', 'sinema', 'saha', 'avm', 'gozcu', 'kizkule', 'saray', 'tapinak'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'atolye', 'marangoz', 'dokum', 'han', 'sanayi', 'lojistik', 'power', 'hydro', 'factory', 'cement', 'gas', 'nuclear', 'tech', 'solar', 'wind', 'vfarm', 'fusion'] };
+const GROUPS = { way: ['road', 'rail', 'pstation', 'fstation', 'levee', 'port', 'pier'], svc: ['fountain', 'police', 'fire', 'school', 'clinic', 'barracks', 'fayton', 'tram', 'bus', 'metro', 'dump', 'lyceum', 'hospital', 'recycle'], fun: ['smallsq', 'square', 'bigsq', 'hippo', 'tiyatro', 'sinema', 'saha', 'avm', 'gozcu', 'kizkule', 'saray', 'tapinak'], ind: ['lumber', 'quarry', 'coal', 'iron', 'mill', 'ranch', 'depo', 'atolye', 'marangoz', 'dokum', 'han', 'sanayi', 'lojistik', 'power', 'hydro', 'factory', 'cement', 'gas', 'nuclear', 'tech', 'solar', 'wind', 'vfarm', 'fusion'] };
 const LINE = { road: 1, rail: 1, levee: 1 };
 const groupOf = (t) => Object.keys(GROUPS).find(g => GROUPS[g].includes(t));
 const COVER = { fayton: 'transit', tiyatro: 'fun', sinema: 'fun', saha: 'fun', avm: 'fun', gozcu: 'square', saray: 'square', tapinak: 'square', metro: 'transit', bus: 'transit', lyceum: 'school', hospital: 'clinic', tram: 'transit', pstation: 'transit', fstation: 'freight', fountain: 'water', res: 'water', square: 'square', smallsq: 'square', bigsq: 'square', police: 'police', school: 'school', clinic: 'clinic', fire: 'fire', hippo: 'fun', levee: 'flood', mill: 'mill', farm: 'mill' };
@@ -362,13 +364,28 @@ function budgetHtml() {
   <h3>Gelir</h3>
   ${row('Çiftçilerden vergi', v(i.taxC || 0))}${row('İşçilerden vergi', v(i.taxI || 0))}${row('Esnaf, eğitimli ve varlıklılardan', v((i.taxE || 0) + (i.taxO || 0) + (i.taxV || 0)))}${row('Ticaret vergisi', v(i.taxCom || 0))}${row('Gıda satışı', v(i.trade || 0))}${row('Kaynak satışı', v(i.sales || 0))}${row('Ziyaretçi geliri', v(i.tourism || 0))}${row('Hipodrom ve stadyum biletleri', v(i.tickets || 0))}${row('Fabrika ve teknopark geliri', v(i.factory || 0))}
   <h3>Gider</h3>
-  ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}${e.import ? row('Hammadde alımı', v(-e.import)) : ''}${e.loan ? row('Kredi taksiti', v(-e.loan)) : ''}
+  ${row('Yol, ray ve set bakımı', v(-(e.roads || 0)))}${row('Köprüler', v(-(e.bridges || 0)))}${row('Valilik', v(-(e.gov || 0)))}${row('Hizmet binaları', v(-((e.services || 0) + (e.fountains || 0))))}${e.import ? row('Kaynak alımı', v(-e.import)) : ''}${e.loan ? row('Kredi taksiti', v(-e.loan)) : ''}
   ${row('Aylık net', sgn(L.net || 0) + ' ', (L.net || 0) < 0 ? 'total neg' : 'total')}
   <h3>Vergi oranı <output id="taxOut">%${G.taxRate}</output></h3>
   <div class="taxrow"><button class="taxb" data-d="-1" aria-label="Azalt">−</button><input id="tax" type="range" min="0" max="${VL.B.maxTax}" step="1" value="${G.taxRate}"><button class="taxb" data-d="1" aria-label="Artır">+</button></div>
   <p class="note" id="taxNote">${taxNote()}</p>
-  <h3>Hammadde</h3><label class="chk"><input type="checkbox" id="autoImp" ${G.autoImp === false ? '' : 'checked'}> Ambarda yetmeyen kömür, demir ve keresteyi dışarıdan al</label><p class="note">Fabrika, dökümhane ve marangozhane durmasın diye eksik hammadde satın alınır. Demiryolu bağlıysa satış fiyatının 1,5 katı (ayda 400'e kadar), limanla 1,4 katı, yalnız karayoluyla 2,2 katı (ayda 40'a kadar).</p>
+  ${buyHtml()}
   ${loanHtml()}`;
+}
+// Valinin aylık alım siparişleri
+function buyHtml() {
+  const mul = VL.buyMul(G), cap = VL.stockCap(G), via = !mul ? '' : mul === VL.B.imp.rail ? 'demiryoluyla' : mul === VL.B.imp.port ? 'limandan' : 'karayoluyla';
+  let h = `<h3>Kaynak alımı</h3>`;
+  if (!mul) return h + '<p class="note">Dış yola bağlanınca kaynak satın alabilirsin.</p>';
+  h += `<p class="note">Her ay belirlediğin kadar alınır ve ambara girer; ambar dolarsa ya da hazine yetmezse daha azı alınır. Fiyat ${via}: satış fiyatının ${String(mul).replace('.', ',')} katı${mul !== VL.B.imp.rail ? ' (demiryoluyla daha ucuz)' : ''}. Ambar sınırı ${fmt(cap)}; depo kurarak artır.</p>`;
+  const last = (G.used || {}).imp || {};
+  for (const k of VL.RES) {
+    const v = (G.buy || {})[k] || 0, unit = VL.B.price[k] * mul;
+    h += `<div class="buy"><div class="buy-h"><b>${VL.RES_NAME[k]}</b><span>ambar ${fmt(G.res[k] || 0)}${last[k] ? ' · geçen ay +' + fmt(last[k]) : ''}</span></div>
+      <div class="taxrow"><button class="taxb" data-bstep="${k}:-50">−</button><input type="range" min="0" max="${VL.B.imp.max}" step="50" value="${v}" data-buy="${k}"><button class="taxb" data-bstep="${k}:50">+</button></div>
+      <div class="buy-f"><span>Ayda <b id="bo-${k}">${fmt(v)}</b></span><span id="bc-${k}">≈${fmt(v * unit)}/ay</span><span class="note">birimi ${unit.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</span></div></div>`;
+  }
+  return h;
 }
 function loanHtml() {
   const L = G.loan, pct = (r) => '%' + Math.round(r * 100);
@@ -390,7 +407,12 @@ function bindBudget() {
   r.onpointerdown = () => { taxDrag = true; }; const up = () => { taxDrag = false; }; r.onpointerup = up; r.onpointercancel = up; r.onblur = up;
   for (const b of document.querySelectorAll('.taxb')) b.onclick = () => setTax(G.taxRate + +b.dataset.d);
   const done = (res) => { if (res.err) toast(res.err); else { updateHud(true); renderPanel(); } };
-  const ai = $('#autoImp'); if (ai) ai.onchange = () => { G.autoImp = ai.checked; };
+  for (const el of document.querySelectorAll('[data-buy]')) {
+    const k = el.dataset.buy, out = () => { $('#bo-' + k).textContent = fmt(G.buy[k] || 0); $('#bc-' + k).textContent = '≈' + fmt((G.buy[k] || 0) * VL.B.price[k] * (VL.buyMul(G) || 0)) + '/ay'; };
+    el.oninput = () => { G.buy = G.buy || {}; G.buy[k] = +el.value; out(); };
+    el.onpointerdown = () => { taxDrag = true; }; el.onpointerup = el.onpointercancel = el.onblur = () => { taxDrag = false; };
+  }
+  for (const b of document.querySelectorAll('[data-bstep]')) b.onclick = () => { const [k, d] = b.dataset.bstep.split(':'); G.buy = G.buy || {}; G.buy[k] = Math.max(0, Math.min(VL.B.imp.max, (G.buy[k] || 0) + +d)); renderPanel(); };
   for (const b of document.querySelectorAll('[data-loan]')) b.onclick = () => done(VL.takeLoan(G, +b.dataset.loan));
   const p = $('#loanPay'); if (p) p.onclick = () => done(VL.payLoan(G));
 }
@@ -459,10 +481,11 @@ function storeHtml() {
   if (staff < 0.8) h += '<p class="note neg">İş sayısı işçiden fazla: ocaklar, madenler ve fabrikalar tam kapasite çalışamıyor. Daha fazla konut aç.</p>';
   if (U.fac) h += row('Fabrikaların hammaddesi', '%' + Math.round(U.fed * 100), U.fed < 1 ? 'neg' : '');
   const im = U.imp || {}, ik = Object.keys(im).filter(k => im[k] > 0);
-  if (ik.length) h += row('Dışarıdan alınan', ik.map(k => VL.RES_NAME[k] + ' ' + fmt(im[k])).join(', ') + ' · ' + fmt(U.impCost) + '/ay');
-  h += '<p class="note">Kömürü santraller, fabrikalar, dökümhane ve kışla; demiri fabrikalar ve dökümhane; keresteyi marangozhane kullanır. Görev şantiyesinin payı her zaman önce ayrılır, kalan işlenir; yetmeyen kısım dışarıdan alınır.</p>';
+  if (ik.length) h += row('Satın alınan', ik.map(k => VL.RES_NAME[k] + ' ' + fmt(im[k])).join(', ') + ' · ' + fmt(U.impCost) + '/ay');
+  if (U.fac && U.fed < 1) h += '<p class="note neg">Hammadde yetmiyor: Bütçe › Kaynak alımından aylık alım belirle.</p>';
+  h += '<p class="note">Kömürü santraller, fabrikalar, dökümhane ve kışla; demiri fabrikalar ve dökümhane; keresteyi marangozhane kullanır. Görev şantiyesinin payı her zaman önce ayrılır, kalan işlenir. Eksik kalanı Bütçe › Kaynak alımından satın alabilirsin.</p>';
   const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
-  h += `<p class="note">Ambar her kaynaktan en çok ${VL.B.stockCap} birim tutar, fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
+  h += `<p class="note">Ambar her kaynaktan en çok ${fmt(VL.stockCap(G))} birim tutar (depo kurarak artır), fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
   return h;
 }
 
@@ -544,7 +567,8 @@ function tileInfo(i) {
     if (d.radius) h += row('Etki yarıçapı', Math.round(d.radius * VL.RADM[up ? up.lv : 1]) + ' kare');
     if (d.route) { const n = c.stopLink[i] || 0; h += row('Hat menzili', Math.round(d.route * VL.RADM[up ? up.lv : 1]) + ' kare') + row('Bağlı durak', n ? n : '<span class="neg">Yok</span>'); if (!n) h += `<p class="note neg">Tek başına durak işe yaramaz: aynı yol ağında ${Math.round(d.route * VL.RADM[up ? up.lv : 1])} kare içine ikinci bir ${d.name.toLocaleLowerCase('tr')} kur.</p>`; }
     if (d.jobs) h += staffRows(Math.round(d.jobs * (up ? up.jmul : 1)), d.edu ? 'o' : 'i', served);
-    if (d.use) { const U = G.used || {}, im = U.imp || {}; h += row('Hammadde', Object.keys(d.use).map(r => d.use[r] * (up ? up.mul : 1) + ' ' + VL.RES_NAME[r].toLocaleLowerCase('tr')).join(', ') + '/ay'); if (Object.keys(d.use).some(r => im[r])) h += '<p class="note">Ambarda yetmeyen hammadde dışarıdan alınıyor (Bütçe › Hammadde alımı).</p>'; }
+    if (key === 'depo') h += row('Ambara ek', '+' + fmt(VL.B.depoCap * (up ? up.mul : 1)) + ' / kaynak') + row('Ambar sınırı', fmt(VL.stockCap(G)));
+    if (d.use) { h += row('Hammadde', Object.keys(d.use).map(r => d.use[r] * (up ? up.mul : 1) + ' ' + VL.RES_NAME[r].toLocaleLowerCase('tr')).join(', ') + '/ay'); if (Object.keys(d.use).some(r => (G.res[r] || 0) < d.use[r])) h += '<p class="note neg">Ambarda hammadde az: Bütçe › Kaynak alımından aylık alım belirle.</p>'; }
     if (d.com) h += row('Esnafa iş', Math.round(d.com * (up ? up.mul : 1)));
     if (d.inc) h += row('Gelir', '≈' + fmt(d.inc * (up ? up.mul : 1)) + '/ay');
     if (d.tour) h += row('Ziyaretçi geliri', '≈' + fmt(d.tour[0] + G.reg * d.tour[1]) + '/ay');
