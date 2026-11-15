@@ -202,3 +202,5 @@ button.wide.on{background:var(--accent);color:#2a2214}
   #popb{min-width:62px} #hapb{min-width:50px} #projb{min-width:50px}
   .stat{padding:6px 6px;gap:3px;font-size:13.5px}
 }
+
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0}.chk input{width:20px;height:20px}

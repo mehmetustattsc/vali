@@ -16,7 +16,7 @@ const S_NONE = 0, S_FOUNTAIN = 1, S_POLICE = 2, S_SCHOOL = 3, S_CLINIC = 4, S_LU
   S_GOV = 9, S_SQUARE = 10, S_SITE = 11, S_LANDMARK = 12, S_SMALLSQ = 13, S_BIGSQ = 14, S_HIPPO = 15, S_FIRE = 16, S_LEVEE = 17,
   S_MILL = 18, S_BARRACKS = 19, S_PSTATION = 20, S_FSTATION = 21, S_PORT = 22, S_PIER = 23, S_POWER = 24, S_HYDRO = 25, S_FACTORY = 26, S_TRAM = 27, S_DUMP = 28, S_RANCH = 29, S_BUS = 30, S_CEMENT = 31, S_LYCEUM = 32, S_HOSPITAL = 33, S_GAS = 34,
   S_METRO = 35, S_RECYCLE = 36, S_NUCLEAR = 37, S_TECH = 38, S_SOLAR = 39, S_WIND = 40, S_VFARM = 41, S_FUSION = 42,
-  S_FAYTON = 43, S_ATOLYE = 44, S_HAN = 45, S_SANAYI = 46, S_AVM = 47, S_LOJ = 48, S_TIYATRO = 49, S_SAHA = 50, S_SINEMA = 51, S_TAPINAK = 52, S_KIZKULE = 53, S_SARAY = 54, S_GOZCU = 55;
+  S_FAYTON = 43, S_ATOLYE = 44, S_HAN = 45, S_SANAYI = 46, S_AVM = 47, S_LOJ = 48, S_TIYATRO = 49, S_SAHA = 50, S_SINEMA = 51, S_TAPINAK = 52, S_KIZKULE = 53, S_SARAY = 54, S_GOZCU = 55, S_MARANGOZ = 56, S_DOKUM = 57;
 // Maden yatakları (G.dep)
 const D_COAL = 1, D_IRON = 2;
 const RES = ['kereste', 'tas', 'komur', 'demir', 'cimento'];
@@ -40,6 +40,8 @@ const B = {
   // İş sayıları "geçindirdiği kişi" cinsindendir (çalışan + ailesi): 1850'de hane başına yaklaşık iki kişi
   power: { plant: 900, hydro: 450, landmark: 1500, coal: 20, factoryUse: 150, tramUse: 30 },   // elektrik birimi yaklaşık bir kişinin tüketimi
   factory: { income: 220, coal: 8, iron: 8 },
+  // Eksik hammadde dışarıdan alınır: satış fiyatının katı (demiryolu ucuz, karayolu pahalı) ve aylık üst sınır
+  imp: { rail: [1.5, 400], port: [1.4, 300], road: [2.2, 40] },
   dumpCap: 2500,                      // bir çöp alanının hizmet ettiği kişi
   resCap: [0, 6, 14, 28, 56, 110, 220],            // konut seviyesine göre kişi
   farmJobs: [0, 6, 11],              // tarla seviyesine göre çiftçi aile
@@ -109,6 +111,8 @@ const SVD = {
   // Her döneme işyeri, eğlence ve turizm
   fayton: { code: S_FAYTON, name: 'Fayton durağı', cost: 120, upkeep: 2, route: 12, cover: 'transit', jobs: 2, year: 1850 },
   atolye: { code: S_ATOLYE, name: 'Dokuma atölyesi', cost: 450, jobs: 24, year: 1850, dirty: 1, inc: 28 },
+  marangoz: { code: S_MARANGOZ, name: 'Marangozhane', cost: 500, jobs: 20, year: 1850, inc: 40, use: { kereste: 6 } },
+  dokum: { code: S_DOKUM, name: 'Dökümhane', cost: 900, upkeep: 2, jobs: 32, year: 1860, dirty: 2, inc: 80, use: { komur: 4, demir: 3 } },
   han: { code: S_HAN, name: 'Han', cost: 1400, upkeep: 6, jobs: 16, w: 2, h: 2, year: 1850, minP: 150 },
   tiyatro: { code: S_TIYATRO, name: 'Tiyatro', cost: 600, upkeep: 8, radius: 7, cover: 'fun', jobs: 6, year: 1850, minP: 400 },
   saha: { code: S_SAHA, name: 'Futbol sahası', cost: 1600, upkeep: 10, radius: 12, cover: 'fun', jobs: 8, w: 3, h: 2, year: 1910, minP: 800 },
@@ -138,7 +142,7 @@ const GW = {
   v: { traffic: 1.5, tax: 1.6, safety: 1.5, square: 1.6, fun: 1.5, dirt: 2.5, edu: 1.2, power: 1.3 },
 };
 const RADM = [0, 1, 1.35, 1.7];      // hizmet binalarında seviyeye göre etki yarıçapı
-const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas', 'metro', 'nuclear', 'recycle', 'tech', 'solar', 'wind', 'vfarm', 'fusion', 'fayton', 'atolye', 'han', 'tiyatro', 'saha', 'sinema', 'sanayi', 'avm', 'lojistik'];
+const UPGRADABLE = ['police', 'fire', 'school', 'clinic', 'lyceum', 'hospital', 'tram', 'bus', 'fountain', 'square', 'bigsq', 'pstation', 'mill', 'lumber', 'quarry', 'coal', 'iron', 'ranch', 'power', 'hydro', 'factory', 'dump', 'cement', 'gas', 'metro', 'nuclear', 'recycle', 'tech', 'solar', 'wind', 'vfarm', 'fusion', 'fayton', 'atolye', 'marangoz', 'dokum', 'han', 'tiyatro', 'saha', 'sinema', 'sanayi', 'avm', 'lojistik'];
 /* Biten görevlerin anıtları: iş ve işlev */
 const LANDMARK = {
   aqueduct: { name: 'Su idaresi', jobs: 10, text: 'Geniş bir alana su verir; 9 kare çevresinde sağlık hizmeti gibi çalışır, salgın riskini yarıya indirir.' },
@@ -1036,13 +1040,22 @@ function monthEnd(G) {
   const pj = G.proj && G.proj.site ? PROJECTS[G.proj.i] : null;
   const rsv = (k) => pj && pj.needs[k] ? Math.max(0, Math.min(pj.needs[k] - (G.proj.got[k] || 0), B.deliverPerMonth * (c.railOut ? 2 : 1))) : 0;
   // Fabrikalar (seviyeye göre ağırlıklı birim): hammadde yettiği oranda tam gelir
-  const fu = A.factory || 0, needC = B.factory.coal * fu, needI = B.factory.iron * fu;
-  const frac = fu ? clamp(Math.min((G.res.komur - rsv('komur')) / needC, (G.res.demir - rsv('demir')) / needI), 0, 1) : 0;
-  G.res.komur -= needC * frac; G.res.demir -= needI * frac;
+  // Hammadde işleyen yerler: önce ambar, eksik kalan dışarıdan alınır (demiryolu/liman/karayolu)
+  const fu = A.factory || 0, users = { factory: { komur: B.factory.coal, demir: B.factory.iron }, marangoz: SVD.marangoz.use, dokum: SVD.dokum.use };
+  const need = {}; for (const k in users) for (const r in users[k]) need[r] = (need[r] || 0) + (A[k] || 0) * users[k][r];
+  const via = c.railOut ? B.imp.rail : c.cnt.port ? B.imp.port : c.outside ? B.imp.road : [0, 0];
+  const fr = {}, imp = {}; let impCost = 0;
+  for (const r in need) {
+    if (!need[r]) { fr[r] = 1; continue; }
+    const local = clamp(G.res[r] - rsv(r), 0, need[r]), buy = G.autoImp === false ? 0 : Math.min(need[r] - local, via[1]);
+    G.res[r] -= local; imp[r] = Math.round(buy); impCost += buy * B.price[r] * via[0]; fr[r] = (local + buy) / need[r];
+  }
+  const fedOf = (k) => Math.min(...Object.keys(users[k]).map(r => fr[r] ?? 1));
+  const frac = fu ? fedOf('factory') : 0;
   const techInc = (A.tech || 0) * 500 * (0.4 + 0.6 * T.power);
-  const workInc = ((A.atolye || 0) * SVD.atolye.inc + ((A.sanayi || 0) * SVD.sanayi.inc + (A.lojistik || 0) * SVD.lojistik.inc) * (0.4 + 0.6 * T.power)) * staff;
+  const workInc = ((A.atolye || 0) * SVD.atolye.inc + (A.marangoz || 0) * SVD.marangoz.inc * fedOf('marangoz') + (A.dokum || 0) * SVD.dokum.inc * fedOf('dokum') + ((A.sanayi || 0) * SVD.sanayi.inc + (A.lojistik || 0) * SVD.lojistik.inc) * (0.4 + 0.6 * T.power)) * staff;
   const facInc = workInc + techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
-  G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: frac, fac: fu };
+  G.used = { komur: Math.round(before.komur - G.res.komur), demir: Math.round(before.demir - G.res.demir), fed: frac, fac: fu, imp, impCost: Math.round(impCost) };
   for (const k of RES) {
     if (G.res[k] > B.stockCap) {
       const over = G.res[k] - B.stockCap; G.res[k] = B.stockCap;
@@ -1073,6 +1086,7 @@ function monthEnd(G) {
     bridges: c.bridges * B.upkeep.bridge,
     gov: G.gov ? B.upkeep.gov : 0,
     services: svcUp,
+    import: impCost,
     loan: G.loan ? Math.min(G.loan.pay, G.loan.bal * (1 + G.loan.rate / 12)) : 0,
   };
   if (race) { G.raceUntil = G.day + 2 * DAYS_PER_MONTH; msg(G, 'race', `Büyük yarış günü! Hipodrom bu ay ${Math.round(inc.tickets)} bilet geliri getirdi, halk bayram ediyor.`); }
@@ -1308,7 +1322,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { S_MARANGOZ, S_DOKUM, traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
