@@ -60,7 +60,14 @@ const B = {
   deliverPerMonth: 45,               // şantiyeye ayda taşınan en çok kaynak (her tür için; demiryoluyla iki katı)
   deliverMoney: 500,                 // görevin hazine payından ayda aktarılan en çok para
   taxNeutral: 10,
-  traffic: { cap: 80, win: 3 },       // yol karesi başına taşınabilen yolculuk; yoğunluk 7×7 pencerede ölçülür
+  traffic: { cap: 34, win: 3 },       // toprak yol karesi başına taşınabilen yolculuk; yoğunluk 7×7 pencerede ölçülür
+  /* Yol sınıfları: şehir büyüdükçe yollar yükseltilir. cap: taşıma kapasitesi çarpanı, up: bakım çarpanı, cost: kare başına yükseltme */
+  roadGrade: [
+    { name: 'Toprak yol', cap: 1, up: 1 },
+    { name: 'Parke taşı yol', year: 1870, cost: 30, cap: 1.7, up: 1.5 },
+    { name: 'Asfalt cadde', year: 1925, cost: 75, cap: 2.8, up: 2.4 },
+    { name: 'Bulvar', year: 1955, cost: 170, cap: 4.6, up: 3.8 },
+  ],
   maxTax: 25,
 };
 
@@ -255,7 +262,7 @@ function newGame(opts) {
   const G = {
     v: VERSION, seed, rs: seed * 7919 + 1, N, map: opts.map || 'river', startYear: opts.year || 1850,
     day: 0, money: B.startMoney, taxRate: B.taxNeutral,
-    t: z(), h: z(), r: z(), z: z(), lv: z(), pg: z(), pop: z(), sv: z(), dep: z(),
+    t: z(), h: z(), r: z(), rq: z(), z: z(), lv: z(), pg: z(), pop: z(), sv: z(), dep: z(),
     gov: null, multi: [], grp: { c: 0, i: 0, e: 0, o: 0, v: 0 }, hap: { c: 60, i: 60, e: 60, o: 60, v: 60 }, hf: { c: {}, i: {}, e: {}, o: {}, v: {} },
     imm: 0, out: 0, born: 0, reg: B.regStart, food: { prod: 0, cons: 0, net: 0 },
     res: { kereste: 0, tas: 0, komur: 0, demir: 0 }, made: {}, sold: {},
@@ -272,6 +279,7 @@ function newGame(opts) {
   genDeposits(G);
   G.forest0 = G.t.filter(t => t === T_FOREST).length;
   setupEra(G);
+  if (!G.rq) G.rq = new Array(G.N * G.N).fill(0);    // yol sınıfları sonradan geldi: eski yollar toprak yol
   return G;
 }
 
@@ -430,7 +438,7 @@ function landPrice(G) { return Math.round(3000 * Math.pow(1.7, G.bought || 0) / 
    çevresine yeni arazi eklenir: su ve dağ kenardan devam eder, ötesi yeni çayır, orman ve tepeler. */
 function enlarge(G) {
   const oN = G.N, N = 96, oy = 16, n = N * N, s = G.seed;
-  const keys = ['t', 'h', 'r', 'z', 'lv', 'pg', 'pop', 'sv', 'dep', 'rl'];
+  const keys = ['t', 'h', 'r', 'rq', 'z', 'lv', 'pg', 'pop', 'sv', 'dep', 'rl'];
   const old = {}; for (const k of keys) old[k] = G[k] || new Array(oN * oN).fill(0);
   for (const k of keys) G[k] = new Array(n).fill(0);
   const oi = (x, y) => y * oN + x;
@@ -485,6 +493,7 @@ function upgradeSave(G) {
     if (G.N === 64) enlarge(G);
     if (!G.own) { G.own = new Array(G.N * G.N).fill(1); G.areas = []; G.bought = 0; }
     G.v = 4;
+    if (!G.rq) G.rq = new Array(G.N * G.N).fill(0);
     msg(G, 'land', 'Harita büyüdü: şehrinin çevresine yeni araziler eklendi. Arazi aracıyla gri alanlara dokunup satın alabilirsin.');
   }
   return G;
@@ -504,13 +513,13 @@ function rebuild(G) {
   const U = () => new Uint8Array(n);
   const c = { dirty: false, net: U(), served: U(), water: U(), police: U(), school: U(), clinic: U(), square: U(), dirt: U(),
     fire: U(), fun: U(), flood: U(), mill: U(), transit: U(), metro: U(), line: U(), stopLink: {}, freight: U(), rnet: U(), railOut: false, station: -1,
-    outside: false, roads: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, eduJobs: 0, ind: [], work: [], zones: { 1: [], 2: [], 3: [] } };
+    outside: false, roads: 0, roadW: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, eduJobs: 0, ind: [], work: [], zones: { 1: [], 2: [], 3: [] } };
   // Yol ağı: Valiliğe değen yollardan başlayan arama
   const q = [];
   if (G.gov) for (const i of govTiles(G)) for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); }
   while (q.length) { const i = q.pop(); if (G.r[i] === 2) c.outside = true; if (G.r[i] === 3) { c.outside = true; c.motorOut = true; } for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); } }
   for (let i = 0; i < n; i++) {
-    if (G.r[i] === 1) { if (G.t[i] === T_WATER) c.bridges++; else c.roads++; }
+    if (G.r[i] === 1) { if (G.t[i] === T_WATER) c.bridges++; else { c.roads++; c.roadW += B.roadGrade[(G.rq && G.rq[i]) || 0].up; } }
     if (!G.r[i] && G.t[i] !== T_WATER) for (const j of neigh4(G, i)) if (c.net[j]) { c.served[i] = 1; break; }
     if (G.z[i]) c.zones[G.z[i]].push(i);
   }
@@ -626,12 +635,16 @@ function routes(G, c, stops) {
 function traffic(G, c) {
   c = c || cache(G);
   const N = G.N, n = N * N, M = N + 1, car = 0.25 + 0.75 * ramp(yearOf(G), 1910, 1970), w = B.traffic.win;
+  // Büyük şehirde yolculuk uzar: aynı yoldan daha çok kişi geçer (1000 kişide ×1, 10 bin ×1,7, 40 bin ×2,6)
+  let pop = 0; for (let i = 0; i < n; i++) pop += G.pop[i];
+  const len = clamp(0.7 + 0.3 * Math.sqrt(pop / 1000), 0.8, 3.2);
   const ST = new Float64Array(M * M), SR = new Float64Array(M * M);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = y * N + x; let t = 0, r = 0;
-    if (G.r[i] && c.net[i]) r = G.r[i] === 3 ? 3 : G.r[i] === 2 ? 2 : 1;
-    if (G.z[i] === Z_RES) t = G.pop[i] * car * (1 - (c.metro[i] ? 0.7 : c.transit[i] ? 0.4 : 0));
-    else if (G.z[i] === Z_COM && G.pg[i] >= 1) t = B.comJobs[G.lv[i]] * 0.5 * car * (1 - (c.transit[i] ? 0.25 : 0));
+    if (G.r[i] && c.net[i]) r = G.r[i] === 3 ? 6 : G.r[i] === 2 ? 2 : B.roadGrade[(G.rq && G.rq[i]) || 0].cap;
+    if (G.z[i] === Z_RES) t = G.pop[i] * car * len * (1 - (c.metro[i] ? 0.7 : c.transit[i] ? 0.4 : 0));
+    else if (G.z[i] === Z_COM && G.pg[i] >= 1) t = B.comJobs[G.lv[i]] * 0.6 * car * len * (1 - (c.transit[i] ? 0.25 : 0));
+    else if (G.sv[i] && SVD[CODE2KEY[G.sv[i]]] && SVD[CODE2KEY[G.sv[i]]].jobs) { const d = SVD[CODE2KEY[G.sv[i]]]; t = d.jobs / ((d.w || 1) * (d.h || 1)) * 0.5 * car * len; }   // fabrika, maden, okul… işe gidenler
     const k = (y + 1) * M + x + 1;
     ST[k] = t + ST[k - 1] + ST[k - M] - ST[k - M - 1]; SR[k] = r + SR[k - 1] + SR[k - M] - SR[k - M - 1];
   }
@@ -719,7 +732,7 @@ function regroup(G, comJobs, eduJobs) {
 }
 
 /* ---------- oyuncu eylemleri ---------- */
-const TOOLS = ['gov', 'road', 'res', 'farm', 'com', 'bulldoze', ...Object.keys(SVD)];
+const TOOLS = ['gov', 'road', 'roadup', 'res', 'farm', 'com', 'bulldoze', ...Object.keys(SVD)];
 
 const isLand = (t) => t === T_GRASS || t === T_FOREST;
 const freeTile = (G, i) => i >= 0 && isLand(G.t[i]) && !G.r[i] && !G.rl[i] && !G.sv[i] && !(G.z[i] && G.lv[i] > 0);
@@ -768,6 +781,12 @@ function quote(G, tool, cells) {
     if (tool === 'road') {
       if (G.r[i] || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;   // boş alanın üstünden geçer, binayı yıkmaz; dağda tünel olur
       else cost = t === T_ROCK ? B.cost.tunnel : t === T_WATER ? B.cost.bridge : G.rl[i] ? B.cost.overpass : t === T_FOREST ? B.cost.roadForest : B.cost.road;
+    } else if (tool === 'roadup') {
+      const g = (G.rq && G.rq[i]) || 0, nx = B.roadGrade[g + 1];
+      if (G.r[i] !== 1) ok = false;
+      else if (!nx) { ok = false; res.err = 'Bu yol zaten bulvar'; }
+      else if (yearOf(G) < nx.year) { ok = false; res.err = `${nx.name} ${nx.year} yılında açılır`; }
+      else cost = nx.cost * (t === T_WATER || t === T_ROCK ? 2 : 1);     // köprü ve tünel iki kat
     } else if (tool === 'rail') {
       if (!G.fx.rail) { ok = false; res.err = 'Demiryolu görevi bitince açılır'; }
       else if (G.rl[i] || G.sv[i] || (G.z[i] && G.lv[i] > 0)) ok = false;     // yolla kesişebilir (hemzemin geçit)
@@ -870,12 +889,13 @@ function apply(G, tool, cells) {
     G.multi.push(m);
     for (const j of q.ok) { clearTile(G, j); G.t[j] = T_GRASS; G.sv[j] = d.code; }
   } else for (const i of q.ok) {
-    if (tool === 'road') { clearTile(G, i); G.r[i] = 1; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
+    if (tool === 'road') { clearTile(G, i); G.r[i] = 1; if (G.rq) G.rq[i] = 0; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
+    else if (tool === 'roadup') { if (!G.rq) G.rq = new Array(G.N * G.N).fill(0); G.rq[i] = (G.rq[i] || 0) + 1; }
     else if (tool === 'rail') { clearTile(G, i); G.rl[i] = 1; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (tool === 'res' || tool === 'farm' || tool === 'com') { clearTile(G, i); G.z[i] = tool === 'res' ? 1 : tool === 'farm' ? 2 : 3; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (d) { clearTile(G, i); G.sv[i] = d.code; if (G.t[i] === T_FOREST) G.t[i] = T_GRASS; }
     else if (tool === 'bulldoze') {
-      if (G.r[i] === 1) G.r[i] = 0;
+      if (G.r[i] === 1) { G.r[i] = 0; if (G.rq) G.rq[i] = 0; }
       else if (G.rl[i] === 1) G.rl[i] = 0;
       if (G.up) delete G.up[i];
       if (isMultiCode(G.sv[i])) { const m = multiAt(G, i); if (m) { if (G.up) delete G.up[idx(G, m.x, m.y)]; for (const j of multiTiles(G, m)) G.sv[j] = 0; G.multi.splice(G.multi.indexOf(m), 1); } }
@@ -1131,7 +1151,7 @@ function monthEnd(G) {
   };
   const svcUp = (Object.keys(c.cnt).reduce((a, k) => a + (SVD[k].upkeep || 0) * c.cnt[k], 0) + c.upExtra) * (G.fx.smart ? 0.75 : 1);
   const exp = {
-    roads: c.roads * B.upkeep.road + c.rails * B.upkeep.rail + c.levees * B.upkeep.levee,
+    roads: (c.roadW || c.roads) * B.upkeep.road + c.rails * B.upkeep.rail + c.levees * B.upkeep.levee,
     bridges: c.bridges * B.upkeep.bridge,
     gov: G.gov ? B.upkeep.gov : 0,
     services: svcUp,

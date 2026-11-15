@@ -60,7 +60,7 @@ export function createView(canvas, G0) {
   const lam = (o) => new THREE.MeshLambertMaterial(Object.assign({ flatShading: true }, o));
   function pool(g, cap, shadow = true) {
     const m = new THREE.InstancedMesh(g, lam({}), cap);
-    m.count = 0; m.frustumCulled = false; m.castShadow = shadow; m.receiveShadow = true;
+    m.count = 0; m.over = 0; m.frustumCulled = false; m.castShadow = shadow; m.receiveShadow = true;
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     world.add(m); return m;
   }
@@ -73,13 +73,24 @@ export function createView(canvas, G0) {
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Euler(), COL = new THREE.Color();
   const UP = new THREE.Vector3(0, 1, 0);
   function put(p, x, y, z, sx, sy, sz, rot, color) {
-    const k = p.count; if (k >= p.instanceMatrix.count) return;
+    const k = p.count; if (k >= p.instanceMatrix.count) { p.over++; return; }
     Q.setFromAxisAngle(UP, rot); T.set(x, y, z); S.set(sx, sy, sz);
     M.compose(T, Q, S); p.setMatrixAt(k, M);
     p.setColorAt(k, COL.set(color)); p.count = k + 1;
   }
   const basePut = put;
   function flush(p) { p.instanceMatrix.needsUpdate = true; if (p.instanceColor) p.instanceColor.needsUpdate = true; }
+  /* Havuz dolarsa parçalar sessizce düşer (duvarsız çatılar, yarım binalar). Taşan havuzu büyütüp yeniden çiz. */
+  function grow(keys) {
+    let any = false;
+    for (const k of keys) {
+      const p = P[k]; if (!p.over) continue;
+      const need = Math.ceil((p.instanceMatrix.count + p.over) * 1.4);
+      world.remove(p); p.material.dispose(); p.dispose();
+      P[k] = pool(p.geometry, need, p.castShadow); any = true;
+    }
+    return any;
+  }
 
   /* Bina parçası: kare merkezine göre yerel (lx, lz), yönle döndürülmüş */
   function part(p, cx, cz, rot, lx, ly, lz, sx, sy, sz, color) {
@@ -210,10 +221,12 @@ export function createView(canvas, G0) {
       for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
         const i = y * N + x, onWater = G.t[i] === V.T_WATER, over = !onWater && G.t[i] !== V.T_ROCK && G.r[i] && G.rl && G.rl[i];   // ray üstünden üst geçit
         if (G.r[i]) {
-          const mw = G.r[i] === 3;
-          cc.set(mw ? '#4f4d4a' : onWater || over ? '#b3a68b' : G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
+          const mw = G.r[i] === 3, gr = G.r[i] === 1 && G.rq ? G.rq[i] || 0 : 0;   // yol sınıfı: toprak, parke, asfalt, bulvar
+          cc.set(mw ? '#4f4d4a' : gr === 3 ? '#4a4b4d' : gr === 2 ? '#5d5e60' : onWater || over ? '#b3a68b' : gr === 1 || G.r[i] === 2 ? PAL.roadStone : PAL.roadDirt);
           const L = linksOf(G.r, x, y, G.r[i] >= 2);
-          band(q, quad4, W(x), W(y), L, mw ? 0.42 : 0.29, onWater || over ? DECK + 0.002 : 0.014, cc);
+          band(q, quad4, W(x), W(y), L, mw || gr === 3 ? 0.46 : gr === 2 ? 0.34 : 0.29, onWater || over ? DECK + 0.002 : 0.014, cc);
+          if (gr === 2) band(q, quad4, W(x), W(y), L, 0.015, 0.018, new THREE.Color('#e8e4da'));
+          if (gr === 3) { band(q, quad4, W(x), W(y), L, 0.06, 0.02, new THREE.Color('#6f9a4e')); band(q, quad4, W(x), W(y), L, 0.012, 0.019, new THREE.Color('#e8e4da'), [-0.3, 0.3]); }
           if (mw) { band(q, quad4, W(x), W(y), L, 0.02, 0.02, new THREE.Color('#f2d27a')); band(q, quad4, W(x), W(y), L, 0.012, 0.019, new THREE.Color('#e8e4da'), [-0.33, 0.33]); }
           if (onWater) bridgeTile(x, y, L, 'stone');
           else if (over) overpass(x, y, L);
@@ -318,8 +331,10 @@ export function createView(canvas, G0) {
   }
 
   /* ---------- ağaçlar (statik) ---------- */
-  function buildTrees() {
-    for (const k of ['tCone', 'tBlob', 'tTrunk']) P[k].count = 0;
+  const TK = ['tCone', 'tBlob', 'tTrunk'];
+  function buildTrees() { drawTrees(); if (grow(TK)) drawTrees(); }
+  function drawTrees() {
+    for (const k of TK) { P[k].count = 0; P[k].over = 0; }
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const i = y * N + x, t = G.t[i];
       const used = G.r[i] || (G.rl && G.rl[i]) || G.z[i] || G.sv[i];
@@ -380,8 +395,10 @@ export function createView(canvas, G0) {
     void tiles;
   }
 
-  function buildBuildings() {
-    for (const k of ['box', 'roof', 'cyl', 'cone', 'pyr', 'blob']) P[k].count = 0;
+  const BK = ['box', 'roof', 'cyl', 'cone', 'pyr', 'blob'];
+  function buildBuildings() { drawBuildings(); if (grow(BK)) drawBuildings(); }
+  function drawBuildings() {
+    for (const k of BK) { P[k].count = 0; P[k].over = 0; }
     for (let i = 0; i < N * N; i++) {
       const z = G.z[i], lv = G.lv[i], sv = G.sv[i];
       if (sv === V.S_FOUNTAIN) {
@@ -902,7 +919,7 @@ export function createView(canvas, G0) {
 
   /* ---------- önizleme, kapsama katmanı, seçim ---------- */
   const prevMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false });
-  const ovMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false });
+  const ovMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.45, depthWrite: false });
   function setPreview(ok, bad, roads) {
     const g = new THREE.Color('#5bd18a'), r = new THREE.Color('#e5533d'), rd = new THREE.Color('#c9a46a');
     flatMesh('prev', prevMat, (q) => {
@@ -916,8 +933,8 @@ export function createView(canvas, G0) {
   let overlay = null;
   function setOverlay(kind) { overlay = kind; buildOverlay(); }
   function buildOverlay() {
-    const c = V.cache(G), red = new THREE.Color('#ff3b1f');
-    const tint = new THREE.Color({ transit: '#e07a3a', freight: '#8a6a42', water: '#2f8fe0', police: '#5a6fd6', school: '#e0a030', clinic: '#2fbf9f', square: '#c46ad6', fire: '#e8562c', fun: '#d6b13a', flood: '#3fa36a', mill: '#d9c24a' }[overlay] || '#2f8fe0');
+    const c = V.cache(G), red = new THREE.Color(overlay === 'traffic' ? '#ff3b1f' : '#e0201a');
+    const tint = new THREE.Color('#1f7fe0');   // her hizmet aynı, belirgin mavi: kapsam bir bakışta okunur
     flatMesh('ov', ovMat, (q) => {
       if (overlay === 'traffic') {
         if (!c.jam) V.traffic(G, c);

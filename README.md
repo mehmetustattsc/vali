@@ -102,3 +102,9 @@ Her `main` gönderiminde testler çalışır, geçerse oyun GitHub Pages'e yayı
 
 ## Lisans
 Kod © Mehmet. Three.js © three.js yazarları, MIT lisansı (`vendor/three/LICENSE`).
+
+## Kapsam katmanları, yol sınıfları, trafik
+- Sağ alttaki katman düğmesi: bina seçmeden Su, Asayiş, İtfaiye, Eğitim, Sağlık, Ulaşım, Meydan, Eğlence ve Trafik kapsamı haritada görünür. Bütün hizmetler aynı belirgin mavide; kapsam dışı evler kırmızı.
+- Ulaşım › Yol yükselt: toprak yol → parke taşı (1870) → asfalt cadde (1925) → bulvar (1955). Kapasite ×1,7 / ×2,8 / ×4,6; bakım da artar.
+- Trafik yeniden ayarlandı: şehir büyüdükçe yolculuklar uzar, işyerleri de trafik üretir; büyük şehirde toprak yollar tıkanır.
+- Düzeltme: kalabalık şehirlerde binaların duvarları/çatıları kayboluyordu (çizim havuzu doluyordu); havuzlar artık gerektikçe büyür.
