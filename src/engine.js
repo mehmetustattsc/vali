@@ -504,7 +504,7 @@ function rebuild(G) {
   const U = () => new Uint8Array(n);
   const c = { dirty: false, net: U(), served: U(), water: U(), police: U(), school: U(), clinic: U(), square: U(), dirt: U(),
     fire: U(), fun: U(), flood: U(), mill: U(), transit: U(), metro: U(), line: U(), stopLink: {}, freight: U(), rnet: U(), railOut: false, station: -1,
-    outside: false, roads: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, eduJobs: 0, ind: [], zones: { 1: [], 2: [], 3: [] } };
+    outside: false, roads: 0, bridges: 0, rails: 0, levees: 0, cnt: {}, svcJobs: 0, eduJobs: 0, ind: [], work: [], zones: { 1: [], 2: [], 3: [] } };
   // Yol ağı: Valiliğe değen yollardan başlayan arama
   const q = [];
   if (G.gov) for (const i of govTiles(G)) for (const j of neigh4(G, i)) if (G.r[j] && !c.net[j]) { c.net[j] = 1; q.push(j); }
@@ -533,7 +533,7 @@ function rebuild(G) {
     c.cnt[key] = (c.cnt[key] || 0) + 1;
     if (d.cover && d.radius) around(G, center, Math.round(d.radius * RADM[lvOf(G, i)]), j => { c[d.cover][j] = 1; });
     const lv = lvOf(G, i), mul = UP.out[lv];
-    if (d.jobs && ok) c[d.edu ? 'eduJobs' : 'svcJobs'] += Math.round(d.jobs * UP.jobs[lv]);
+    if (d.jobs && ok) { const cap = Math.round(d.jobs * UP.jobs[lv]); c[d.edu ? 'eduJobs' : 'svcJobs'] += cap; c.work.push({ i, key, cap, g: d.edu ? 'o' : 'i' }); }
     if (d.upkeep && lv > 1) c.upExtra += d.upkeep * (lv - 1);
     if (d.dirty) around(G, center, d.dirty, j => { c.dirt[j] = 1; });
     if (d.route && ok) stops.push({ i, key, L: Math.round(d.route * RADM[lv]) });
@@ -564,7 +564,7 @@ function rebuild(G) {
     if (m.k !== S_LANDMARK) continue;
     const tiles = multiTiles(G, m), ok = tiles.some(j => c.served[j]), ctr = idx(G, m.x + 1, m.y + 1), L = LANDMARK[m.pid];
     if (!L) continue;
-    if (ok) c[L.edu || m.pid === 'univ' ? 'eduJobs' : 'svcJobs'] += L.jobs;
+    if (ok) { const g = L.edu || m.pid === 'univ' ? 'o' : 'i'; c[g === 'o' ? 'eduJobs' : 'svcJobs'] += L.jobs; c.work.push({ i: tiles[0], key: 'lm:' + m.pid, cap: L.jobs, g }); }
     if (m.pid === 'aqueduct') around(G, ctr, 9, j => { c.clinic[j] = 1; });                 // su idaresi: temiz su, sağlık
     if (m.pid === 'rail') { around(G, ctr, 9, j => { c.transit[j] = 1; }); around(G, ctr, 8, j => { c.freight[j] = 1; }); }
     if (m.pid === 'quay') c.cnt.port = (c.cnt.port || 0) + 1;                                 // hazır nehir limanı
@@ -925,8 +925,45 @@ function step(G) {
   // 3) Göç ve nüfus
   T = totals(G);
   migrate(G, T);
+  employ(G);
   G.day++;
   if (G.day % DAYS_PER_MONTH === 0) monthEnd(G);
+}
+
+/* İşyerlerinde kimin çalıştığı (G.emp: binanın ilk karesi → çalışan sayısı, aileleriyle).
+   Grubun kişi sayısı sabittir; burada yalnızca işyerlerine dağıtılır:
+   çalışan yerinde kalır, işsizler boş işlere girer, kişi azalırsa işyerlerinden orantılı eksilir.
+   Yeni ya da yükseltilmiş işyeri bu yüzden boş açılır ve gelen göçle dolar. */
+function employ(G) {
+  const c = cache(G), old = G.emp || {}, emp = {};
+  for (const g of ['i', 'o']) {
+    const L = c.work.filter(w => w.g === g);
+    let W = G.grp[g] || 0;
+    if (g === 'o' && G.gov) {        // Valilik memurları önce
+      emp.gov = Math.min(B.govJobs, W); W -= emp.gov;
+    }
+    let sum = 0; for (const w of L) { const e = Math.min(w.cap, old[w.i] || 0); emp[w.i] = e; sum += e; }
+    if (sum > W) {                    // kişi azaldı: her işyerinden orantılı
+      const f = W / sum; let left = W;
+      for (const w of L) { emp[w.i] = Math.floor(emp[w.i] * f); left -= emp[w.i]; }
+      for (const w of L) { if (left <= 0) break; if (emp[w.i] < w.cap) { emp[w.i]++; left--; } }
+    } else {                          // işsizler boş işlere: boşluğa göre orantılı
+      let free = W - sum, vac = 0; for (const w of L) vac += w.cap - emp[w.i];
+      if (free > 0 && vac > 0) {
+        const f = Math.min(1, free / vac);
+        for (const w of L) { const a = Math.min(w.cap - emp[w.i], Math.floor((w.cap - emp[w.i]) * f)); emp[w.i] += a; free -= a; }
+        for (const w of L) { if (free <= 0) break; if (emp[w.i] < w.cap) { emp[w.i]++; free--; } }
+      }
+    }
+  }
+  G.emp = emp;
+}
+// Bir binanın çalışanı ve kapasitesi (çok kareli binada herhangi bir karesi verilebilir)
+function staffOf(G, i) {
+  const c = cache(G); let a = i;
+  if (G.sv[i] && (isMultiCode(G.sv[i]) || G.sv[i] === S_LANDMARK)) { const m = G.multi.find(m => i % G.N >= m.x && i % G.N < m.x + (m.w || 2) && ((i / G.N) | 0) >= m.y && ((i / G.N) | 0) < m.y + (m.h || 2)); if (m) a = multiTiles(G, m)[0]; }
+  const w = c.work.find(w => w.i === a); if (!w) return null;
+  return { n: (G.emp || {})[a] || 0, cap: w.cap, g: w.g };
 }
 
 function develop(G, z, demand, c, T) {
@@ -1027,12 +1064,15 @@ function monthEnd(G) {
   const prod = ec * T.yieldPP + T.fish, cons = P * B.foodPerPerson + T.army, net = prod - cons;
   G.food = { prod: Math.round(prod), cons: Math.round(cons), net: Math.round(net) };
   // Kaynak üretimi: işçi bulunduğu ölçüde
-  const staff = T.workJobs ? Math.min(1, G.grp.i / T.workJobs) : 0;
+  if (!G.emp) employ(G);
+  const E = G.emp || {}, wf = {};       // binada çalışan oranı ve tür bazında toplam
+  const wkey = {}; for (const w of c.work) { const e = Math.min(w.cap, E[w.i] || 0); wf[w.i] = w.cap ? e / w.cap : 0; const s = wkey[w.key] || (wkey[w.key] = [0, 0]); s[0] += e; s[1] += w.cap; }
+  const sf = (k) => wkey[k] && wkey[k][1] ? wkey[k][0] / wkey[k][1] : 0;
   const made = {}, sold = {};
   let sales = 0;
   const pm = (G.fx.rail ? 1.3 : 1) * (c.cnt.port ? B.port.res * (G.map === 'sea' ? 1.2 : 1) : 1);
   const railMade = {};
-  for (const b of c.ind) { const d = SVD[b.key], k = d.out, a = d.rate * b.f * staff; made[k] = (made[k] || 0) + a; G.res[k] += a; if (b.rail) railMade[k] = (railMade[k] || 0) + a; }
+  for (const b of c.ind) { const d = SVD[b.key], k = d.out, a = d.rate * b.f * (wf[b.i] || 0); made[k] = (made[k] || 0) + a; G.res[k] += a; if (b.rail) railMade[k] = (railMade[k] || 0) + a; }
   const before = { komur: G.res.komur, demir: G.res.demir };
   if (c.cnt.barracks) { const need = B.barracks.coal * c.cnt.barracks; G.res.komur = Math.max(0, G.res.komur - need); }
   // Santraller kömür yakar; fabrikalar kömür ve demir işler
@@ -1061,9 +1101,9 @@ function monthEnd(G) {
   }
   const fedOf = (k) => Math.min(...Object.keys(users[k]).map(r => fr[r] ?? 1));
   const frac = fu ? fedOf('factory') : 0;
-  const techInc = (A.tech || 0) * 500 * (0.4 + 0.6 * T.power);
-  const workInc = ((A.atolye || 0) * SVD.atolye.inc + (A.marangoz || 0) * SVD.marangoz.inc * fedOf('marangoz') + (A.dokum || 0) * SVD.dokum.inc * fedOf('dokum') + ((A.sanayi || 0) * SVD.sanayi.inc + (A.lojistik || 0) * SVD.lojistik.inc) * (0.4 + 0.6 * T.power)) * staff;
-  const facInc = workInc + techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * staff * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
+  const techInc = (A.tech || 0) * 500 * (0.4 + 0.6 * T.power) * sf('tech');
+  const workInc = (A.atolye || 0) * SVD.atolye.inc * sf('atolye') + (A.marangoz || 0) * SVD.marangoz.inc * fedOf('marangoz') * sf('marangoz') + (A.dokum || 0) * SVD.dokum.inc * fedOf('dokum') * sf('dokum') + ((A.sanayi || 0) * SVD.sanayi.inc * sf('sanayi') + (A.lojistik || 0) * SVD.lojistik.inc * sf('lojistik')) * (0.4 + 0.6 * T.power);
+  const facInc = workInc + techInc + (G.fx.osb ? 1.5 : 1) * B.factory.income * fu * sf('factory') * (0.3 + 0.7 * T.power) * (0.4 + 0.6 * frac);
   G.used = { komur: Math.round(before.komur - G.res.komur + (imp.komur || 0)), demir: Math.round(before.demir - G.res.demir + (imp.demir || 0)), kereste: Math.round(before.kereste - G.res.kereste + (imp.kereste || 0)) || undefined, fed: frac, fac: fu, imp, impCost: Math.round(impCost) };
   for (const k of RES) {
     if (G.res[k] > cap) {
@@ -1331,7 +1371,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { stockCap, buyMul, S_DEPO, S_MARANGOZ, S_DOKUM, traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { employ, staffOf, stockCap, buyMul, S_DEPO, S_MARANGOZ, S_DOKUM, traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };

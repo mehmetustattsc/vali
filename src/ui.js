@@ -347,9 +347,12 @@ function renderPanel() {
 }
 
 // Bir işyerinde şu an kaç kişi çalışıyor: iş, o grubun şehirdeki doluluğu oranında dolar
-function staffRows(cap, g, ok) {
-  if (!ok) return row('Çalışan', '0 / ' + fmt(cap), 'neg');
-  const T = VL.totals(G), jobs = T.jobs[g] || 0, fill = jobs ? Math.min(1, (G.grp[g] || 0) / jobs) : 0, n = Math.round(cap * fill);
+// Tarla ve dükkânlarda çalışanlar bütün alana eşit dağılır (üretim de böyle hesaplanır)
+function zoneStaff(cap, g) { const T = VL.totals(G), j = T.jobs[g] || 0; return Math.round(cap * (j ? Math.min(1, (G.grp[g] || 0) / j) : 0)); }
+function staffRows(cap, g, ok, i) {
+  const s = ok ? VL.staffOf(G, i) : null;
+  if (!s) return row('Çalışan', '0 / ' + fmt(cap), 'neg') + '<p class="note">Yola bağlı olmadığı için çalışmıyor.</p>';
+  cap = s.cap; const n = s.n;
   let h = row('Çalışan (aileleriyle)', fmt(n) + ' / ' + fmt(cap), n < cap ? 'neg' : '');
   if (n < cap) h += `<p class="note">${fmt(cap - n)} kişilik iş boş. Boş konut varsa yeni ${g === 'o' ? 'eğitimliler' : 'işçiler'} her ay gelir; yoksa konut alanı aç.${g === 'o' ? ' Eğitimliler için mektep gerekir.' : ''}</p>`;
   return h;
@@ -555,7 +558,7 @@ function tileInfo(i) {
     const L = m && VL.LANDMARK[m.pid];
     if (!L) return { title: p ? p.name : 'Anıt', html: `<p class="note">${p ? p.reward : ''}</p>` };
     const ok = VL.multiTiles(G, m).some(j => c.served[j]);
-    return { title: `${p.name} · ${L.name}`, html: `${row('Yola bağlı', yes(ok))}${row('Geçindirdiği kişi', ok ? L.jobs : 0)}${m.pid === 'tower' && ok ? row('Ziyaretçi geliri', '≈' + fmt(40 + G.reg * 0.15) + '/ay') : ''}<p class="note">${L.text}</p>${ok ? '' : '<p class="note neg">Çalışması için yola bağla.</p>'}` };
+    return { title: `${p.name} · ${L.name}`, html: `${row('Yola bağlı', yes(ok))}${staffRows(L.jobs, L.edu || m.pid === 'univ' ? 'o' : 'i', ok, i)}${m.pid === 'tower' && ok ? row('Ziyaretçi geliri', '≈' + fmt(40 + G.reg * 0.15) + '/ay') : ''}<p class="note">${L.text}</p>${ok ? '' : '<p class="note neg">Çalışması için yola bağla.</p>'}` };
   }
   const key = VL.CODE2KEY[sv];
   if (key && VL.SVD[key]) {
@@ -566,7 +569,7 @@ function tileInfo(i) {
     if (up) h += row('Seviye', up.lv + ' / ' + up.max) + (up.lv > 1 ? row('Üretim çarpanı', '×' + up.mul) : '');
     if (d.radius) h += row('Etki yarıçapı', Math.round(d.radius * VL.RADM[up ? up.lv : 1]) + ' kare');
     if (d.route) { const n = c.stopLink[i] || 0; h += row('Hat menzili', Math.round(d.route * VL.RADM[up ? up.lv : 1]) + ' kare') + row('Bağlı durak', n ? n : '<span class="neg">Yok</span>'); if (!n) h += `<p class="note neg">Tek başına durak işe yaramaz: aynı yol ağında ${Math.round(d.route * VL.RADM[up ? up.lv : 1])} kare içine ikinci bir ${d.name.toLocaleLowerCase('tr')} kur.</p>`; }
-    if (d.jobs) h += staffRows(Math.round(d.jobs * (up ? up.jmul : 1)), d.edu ? 'o' : 'i', served);
+    if (d.jobs) h += staffRows(Math.round(d.jobs * (up ? up.jmul : 1)), d.edu ? 'o' : 'i', served, i);
     if (key === 'depo') h += row('Ambara ek', '+' + fmt(VL.B.depoCap * (up ? up.mul : 1)) + ' / kaynak') + row('Ambar sınırı', fmt(VL.stockCap(G)));
     if (d.use) { h += row('Hammadde', Object.keys(d.use).map(r => d.use[r] * (up ? up.mul : 1) + ' ' + VL.RES_NAME[r].toLocaleLowerCase('tr')).join(', ') + '/ay'); if (Object.keys(d.use).some(r => (G.res[r] || 0) < d.use[r])) h += '<p class="note neg">Ambarda hammadde az: Bütçe › Kaynak alımından aylık alım belirle.</p>'; }
     if (d.com) h += row('Esnafa iş', Math.round(d.com * (up ? up.mul : 1)));
@@ -622,11 +625,11 @@ function tileInfo(i) {
       else if (lv === 2) h += '<p class="note">Konağa dönüşmesi için su, yakında ticaret ve memnun halk gerekir.</p>';
     } else if (z === VL.Z_FARM) {
       const f = VL.B.farmJobs[building ? lv - 1 : lv] || 0;
-      h += row('Geçindirdiği kişi', f) + row('Aylık ürün', '≈' + Math.round(f * VL.B.foodPerFarmer));
+      const n = zoneStaff(f, 'c'); h += row('Çalışan (aileleriyle)', fmt(n) + ' / ' + fmt(f), n < f ? 'neg' : '') + row('Aylık ürün', '≈' + Math.round(n * VL.totals(G).yieldPP));
       if (!lv) h += '<p class="note">Gıda ya da bölge talebi olduğunda ekilir.</p>';
     } else {
       const f = VL.B.comJobs[building ? lv - 1 : lv] || 0;
-      h += row('Geçindirdiği kişi', f);
+      const n = zoneStaff(f, 'e'); h += row('Çalışan (aileleriyle)', fmt(n) + ' / ' + fmt(f), n < f ? 'neg' : '');
       if (!lv) h += '<p class="note">Nüfus 20 kişiyi geçince dükkânlar açılır.</p>';
     }
     return { title: (building ? name + ' (yapılıyor)' : name), html: h + markNote };
