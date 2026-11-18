@@ -91,7 +91,7 @@ async def main():
         big = await pg.evaluate('''()=>{
           const V=Vali,W=__vali,G=W.G(),N=G.N; G.money+=60000;
           // nüfusu büyük yapılar için zorla
-          const c=V.cache(G); for(const i of c.zones[1]) if(G.lv[i]>0){ G.lv[i]=3; G.pg[i]=1; G.pop[i]=28; } G.grp.i+=600; V.touch(G);
+          const c=V.cache(G); for(const i of c.zones[1]) if(G.lv[i]>0){ G.lv[i]=4; G.pg[i]=1; G.pop[i]=40; } G.grp.i+=600; V.touch(G);
           const P=V.totals(G).P;
           const tryAll=(k)=>{ for(let i=0;i<N*N;i++){ const q=V.quote(G,k,[i]); if(q.ok.length&&!q.bad.length&&q.ok.some(j=>V.cache(G).served[j])) return W.paint(k,[i]).done; } return false; };
           const r={P, bigsq:tryAll('bigsq'), hippo:tryAll('hippo'), fire:tryAll('fire'), mill:tryAll('mill'), smallsq:tryAll('smallsq')};
@@ -116,7 +116,7 @@ async def main():
         st = await pg.evaluate('''()=>{
           const V=Vali,W=__vali,G=W.G(),N=G.N;
           const tryAll=(k)=>{ for(let i=0;i<N*N;i++){ const q=V.quote(G,k,[i]); if(q.ok.length&&!q.bad.length) return W.paint(k,[i]).done; } return false; };
-          const c0=V.cache(G); for(const i of c0.zones[1]) if(G.lv[i]>0){ G.lv[i]=3; G.pg[i]=1; G.pop[i]=28; } G.grp.i=Math.max(G.grp.i,600); V.touch(G);
+          const c0=V.cache(G); for(const i of c0.zones[1]) if(G.lv[i]>0){ G.lv[i]=4; G.pg[i]=1; G.pop[i]=40; } G.grp.i=Math.max(G.grp.i,600); V.touch(G);
           const r={P:V.totals(G).P, pst:tryAll('pstation'), fst:tryAll('fstation'), port:tryAll('port')}; r.pier=tryAll('pier');
           // nehre bir köprü: Valilik hizasındaki yoldan doğuya
           const y=G.gov.y+2; let x=G.gov.x+2; while(x<N-1&&G.t[y*N+x]!==1) x++; const cells=[]; for(let k=x-3;k<x+6&&k<N;k++) if(G.t[y*N+k]!==3) cells.push(y*N+k);
