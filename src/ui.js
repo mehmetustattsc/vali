@@ -25,6 +25,7 @@ const ICON = {
   check: '<path d="M5 12.5 10 17.5 19 7"/>',
   full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   coin: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.5 9.5c0-1 1-1.6 2.5-1.6s2.5.7 2.5 1.7-1 1.4-2.5 1.7-2.5.8-2.5 1.8 1 1.7 2.5 1.7 2.5-.6 2.5-1.6"/>',
   people: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11a3 3 0 1 0 0-6M17 14c2.5.4 4 2.8 4 6"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>',
@@ -356,9 +357,15 @@ function closePanel() { panelKind = null; $('#panel').hidden = true; $('#app').c
 function renderPanel() {
   const head = $('#panel h2'), body = $('#panel .body'), keep = body.scrollTop, same = body.dataset.kind === panelKind + (panelKind === 'city' ? cityTab : '');
   if (panelKind === 'budget') { head.textContent = 'Bütçe'; body.innerHTML = budgetHtml(); bindBudget(); }
-  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { cityTab = b.dataset.tab; renderPanel(); } }; const j = $('#gJam'); if (j) j.onclick = () => { overlayPinned = overlayPinned === 'traffic' ? false : 'traffic'; setTool(tool); renderPanel(); }; }
+  else if (panelKind === 'city') { head.textContent = 'Şehir'; body.innerHTML = cityHtml(); body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { cityTab = b.dataset.tab; renderPanel(); } }; const j = $('#gJam'); if (j) j.onclick = () => { overlayPinned = overlayPinned === 'traffic' ? false : 'traffic'; setTool(tool); renderPanel(); }; bindAmbar((r) => { if (r.err) toast(r.err); updateHud(true); renderPanel(); }); }
   else if (panelKind === 'game') { head.textContent = 'Menü'; body.innerHTML = gameHtml(); bindGame(); }
-  else if (panelKind === 'proj') { head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); }; }
+  else if (panelKind === 'proj') {
+    head.textContent = 'Görev ve kaynaklar'; body.innerHTML = projHtml(); const b = $('#gSite'); if (b) b.onclick = () => { closePanel(); setTool('site'); };
+    const done = (r) => { if (r.err) toast(r.err); drainMessages(); updateHud(true); renderPanel(); };
+    const all = $('#invAll'); if (all) all.onclick = () => done(VL.invest(G));
+    for (const x of document.querySelectorAll('[data-inv]')) x.onclick = () => done(VL.invest(G, x.dataset.inv));
+    bindAmbar(done);
+  }
   else if (panelKind === 'tile') { const t = tileInfo(selected); head.textContent = t.title; body.innerHTML = t.html; const b = $('#gUp'); if (b) b.onclick = () => { const r = VL.upgrade(G, selected); if (!r.done) toast(r.err); else { view.syncBuild(); updateHud(true); renderPanel(); } }; }
   body.scrollTop = same ? keep : 0; body.dataset.kind = panelKind + (panelKind === 'city' ? cityTab : '');
 }
@@ -478,8 +485,10 @@ function projHtml() {
       <p class="note">${p.desc}</p>`;
     for (const k in p.needs) {
       const f = Math.min(1, P.got[k] / p.needs[k]);
-      h += `<div class="bar"><span>${VL.RES_NAME[k]}</span><i style="--f:${f}"></i><b>${fmt(P.got[k])} / ${fmt(p.needs[k])}</b></div>`;
+      const rest = p.needs[k] - P.got[k], have = k === 'para' ? G.money : (G.res[k] || 0), can = rest > 0 && have >= 1 && (k === 'para' || P.linked);
+      h += `<div class="bar"><span>${VL.RES_NAME[k]}</span><i style="--f:${f}"></i><b>${fmt(P.got[k])} / ${fmt(p.needs[k])}</b>${rest > 0 ? `<button class="inv" data-inv="${k}" ${can ? '' : 'disabled'}>Yatır</button>` : ''}</div>`;
     }
+    h += `<button class="wide primary" id="invAll">${ico('coin')} Elimdekini yatır</button><p class="note">Ambardaki kaynağı ve hazineden kalan payı aylık sınır olmadan hemen şantiyeye aktarır. Hazine payı her zaman yatırılabilir; kaynaklar için yola bağlı şantiye gerekir.</p>`;
     if (!P.site) h += `<button class="wide primary" id="gSite">${ico('site')} Şantiye kur</button><p class="note">Şantiye yola bağlı olmalı. Ambardaki kaynaklar her ay en çok ${VL.B.deliverPerMonth} birim taşınır.</p>`;
     else if (!P.linked) h += '<p class="note neg">Şantiye yol ağına bağlı değil, taşıma yapılamıyor.</p>';
     else h += `<p class="note">Kaynaklar her ay ambardan şantiyeye taşınıyor (türü başına en çok ${VL.B.deliverPerMonth}).</p>`;
@@ -493,8 +502,12 @@ function projHtml() {
   return h;
 }
 
+function bindAmbar(done) { const a = $('#ambarUp'); if (a) a.onclick = () => done(VL.upgradeAmbar(G)); }
 function storeHtml() {
   let h = `<h3>Ambar <span>itibar ${G.itibar}</span></h3>`;
+  const an = VL.ambarNext(G);
+  h += row('Ambar sınırı (her kaynak)', fmt(VL.stockCap(G)) + ` <small>seviye ${(G.ambarLv || 0) + 1}/${VL.B.ambar.length}</small>`);
+  h += an ? `<button class="wide" id="ambarUp" ${G.money < an.cost ? 'disabled' : ''}>${ico('up')} Ambarı büyüt: ${fmt(an.cap)} (${fmt(an.cost)})</button>` : '<p class="note">Ambar en büyük seviyede.</p>';
   const U = G.used || {}, Tw = VL.totals(G), staff = Tw.workJobs ? Math.min(1, G.grp.i / Tw.workJobs) : 0;
   for (const k of VL.RES) h += row(VL.RES_NAME[k], `${fmt(G.res[k])}<small class="${(G.made[k] || 0) > 0 ? 'pos' : ''}"> +${fmt(G.made[k] || 0)}</small>${U[k] ? `<small class="neg"> −${fmt(U[k])}</small>` : ''}<small>/ay</small>`);
   h += row('İşçi doluluğu', '%' + Math.round(staff * 100), staff < 0.8 ? 'neg' : '');
@@ -505,7 +518,7 @@ function storeHtml() {
   if (U.fac && U.fed < 1) h += '<p class="note neg">Hammadde yetmiyor: Bütçe › Kaynak alımından aylık alım belirle.</p>';
   h += '<p class="note">Kömürü santraller, fabrikalar, dökümhane ve kışla; demiri fabrikalar ve dökümhane; keresteyi marangozhane kullanır. Görev şantiyesinin payı her zaman önce ayrılır, kalan işlenir. Eksik kalanı Bütçe › Kaynak alımından satın alabilirsin.</p>';
   const sold = VL.RES.filter(k => (G.sold[k] || 0) > 0);
-  h += `<p class="note">Ambar her kaynaktan en çok ${fmt(VL.stockCap(G))} birim tutar (depo kurarak artır), fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
+  h += `<p class="note">Ambar her kaynaktan en çok ${fmt(VL.stockCap(G))} birim tutar (Ambarı büyüt ya da depo kur), fazlası kendiliğinden satılır${sold.length ? ' (geçen ay: ' + sold.map(k => VL.RES_NAME[k] + ' ' + fmt(G.sold[k])).join(', ') + ')' : ''}.</p>`;
   return h;
 }
 

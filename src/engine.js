@@ -58,7 +58,10 @@ const B = {
   stockCap: 600,                     // ambarda tutulan en çok kaynak; fazlası kendiliğinden satılır
   price: { kereste: 0.9, tas: 0.6, komur: 1.3, demir: 2.2, cimento: 1.4 },   // birim satış fiyatı (hazineye giren pay)
   deliverPerMonth: 45,               // şantiyeye ayda taşınan en çok kaynak (her tür için; demiryoluyla iki katı)
-  deliverMoney: 500,                 // görevin hazine payından ayda aktarılan en çok para
+  deliverMoney: 500,
+  // Ambar büyütme: seviye başına her kaynaktan tutulan miktar ve o seviyeye çıkma bedeli
+  ambar: [600, 2000, 5000, 15000, 50000, 150000, 500000, 1500000, 5000000, 15000000, 50000000, 100000000],
+  ambarCost: 0.4,                    // bedel = yeni kapasite × 0,4                 // görevin hazine payından ayda aktarılan en çok para
   taxNeutral: 10,
   traffic: { cap: 34, win: 3 },       // toprak yol karesi başına taşınabilen yolculuk; yoğunluk 7×7 pencerede ölçülür
   /* Yol sınıfları: şehir büyüdükçe yollar yükseltilir. cap: taşıma kapasitesi çarpanı, up: bakım çarpanı, cost: kare başına yükseltme */
@@ -604,7 +607,32 @@ function rebuild(G) {
 /* Otobüs, tramvay ve fayton hatları: aynı türden iki durak yol üzerinden menzil içindeyse aradaki yollar hat olur.
    Hattın iki yanındaki iki kare ulaşım kapsamına girer. Tek başına duran durak işe yaramaz. */
 // Ambar sınırı: temel 600 + her depo (seviyesiyle) 1000
-function stockCap(G, c) { c = c || cache(G); return B.stockCap + Math.round(((c.act || {}).depo || 0) * B.depoCap); }
+function stockCap(G, c) { c = c || cache(G); return B.ambar[G.ambarLv || 0] + Math.round(((c.act || {}).depo || 0) * B.depoCap); }
+function ambarNext(G) { const l = (G.ambarLv || 0) + 1; return l < B.ambar.length ? { lv: l, cap: B.ambar[l], cost: Math.round(B.ambar[l] * B.ambarCost) } : null; }
+function upgradeAmbar(G) {
+  const n = ambarNext(G); if (!n) return { err: 'Ambar en büyük seviyede.' };
+  if (G.money < n.cost) return { err: 'Hazine yetmiyor: ' + n.cost.toLocaleString('tr-TR') + ' gerekir.' };
+  G.money -= n.cost; G.ambarLv = n.lv; return { done: true };
+}
+/* Görev için elindekini hemen yatır (aylık taşıma sınırı olmadan). Para her zaman; kaynaklar yola bağlı şantiye varsa. */
+function invest(G, which) {
+  const P = G.proj; if (!P) return { err: 'Şu an görev yok.' };
+  const p = PROJECTS[P.i], c = cache(G), m = G.multi.find(q => q.k === S_SITE);
+  const linked = !!(m && multiTiles(G, m).some(j => c.served[j]));
+  const out = {}; let any = false;
+  for (const k in p.needs) {
+    if (which && which !== k) continue;
+    const rest = p.needs[k] - (P.got[k] || 0); if (rest <= 0) continue;
+    if (k !== 'para' && !linked) continue;
+    const a = Math.floor(Math.min(rest, Math.max(0, k === 'para' ? G.money : G.res[k] || 0)));
+    if (a <= 0) continue;
+    if (k === 'para') G.money -= a; else G.res[k] -= a;
+    P.got[k] = (P.got[k] || 0) + a; out[k] = a; any = true;
+  }
+  if (!any) return { err: !linked && Object.keys(p.needs).some(k => k !== 'para' && P.got[k] < p.needs[k]) ? 'Kaynak yatırmak için önce yola bağlı bir şantiye kur.' : 'Yatıracak bir şey yok.' };
+  if (linked && Object.keys(p.needs).every(k => P.got[k] >= p.needs[k] - 0.01)) finishProject(G, m);
+  return { done: true, out };
+}
 // Dışarıdan alım fiyat katı: demiryolu < liman < karayolu; bağlantı yoksa alınamaz
 function buyMul(G, c) { c = c || cache(G); return c.railOut ? B.imp.rail : c.cnt.port ? B.imp.port : c.outside ? B.imp.road : 0; }
 
@@ -1391,7 +1419,7 @@ function deserialize(s) {
   return G;
 }
 
-const API = { employ, staffOf, stockCap, buyMul, S_DEPO, S_MARANGOZ, S_DOKUM, traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
+const API = { invest, upgradeAmbar, ambarNext, employ, staffOf, stockCap, buyMul, S_DEPO, S_MARANGOZ, S_DOKUM, traffic, S_FAYTON, S_ATOLYE, S_HAN, S_SANAYI, S_AVM, S_LOJ, S_TIYATRO, S_SAHA, S_SINEMA, S_TAPINAK, S_KIZKULE, S_SARAY, S_GOZCU, loanLimit, loanPay, loanRate, takeLoan, payLoan, ensureRock, S_METRO, S_RECYCLE, S_NUCLEAR, S_TECH, S_SOLAR, S_WIND, S_VFARM, S_FUSION, RADM, landPrice, areaAt, enlarge, S_BUS, S_CEMENT, S_LYCEUM, S_HOSPITAL, S_GAS, GRP, GRP_NAME, UP, upInfo, upgrade, lvOf, S_RANCH, S_POWER, S_HYDRO, S_FACTORY, S_TRAM, S_DUMP, genMap, VERSION, B, SVD, PROJECTS, hippoIncome, LANDMARK, autoRoads, S_PSTATION, S_FSTATION, S_PORT, S_PIER, S_SMALLSQ, S_BIGSQ, S_HIPPO, S_FIRE, S_LEVEE, S_MILL, S_BARRACKS, isMultiCode, multiTiles, disasters, riskOf, RES, RES_NAME, MONTHS, DAYS_PER_MONTH, T_GRASS, T_WATER, T_FOREST, T_ROCK, Z_RES, Z_FARM, Z_COM,
   S_FOUNTAIN, S_POLICE, S_SCHOOL, S_CLINIC, S_LUMBER, S_QUARRY, S_COAL, S_IRON, S_GOV, S_SQUARE, S_SITE, S_LANDMARK, D_COAL, D_IRON, CODE2KEY, TOOLS,
   newGame, step, quote, apply, totals, cache, touch, avgHap, dateOf, dateText, yearOf, serialize, deserialize, upgradeSave, govTiles, multiAt, neigh4, idx, hash2, fbm,
   resourceFactor, needsText };
